@@ -419,3 +419,52 @@ fn score_subtree_quick(tree: &Tree, idx: usize, profile: &ScoringProfile) -> f32
     let tag = (profile.tag_weight)(tree.get(idx).tag.as_str());
     profile.w_text_length * ((text as f32) + 1.0).ln() + profile.w_tag_weight * tag
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tag_weight_table_matches_design() {
+        assert!(default_tag_weight("article") > 0.0);
+        assert!(default_tag_weight("main") > 0.0);
+        assert!(default_tag_weight("nav") < 0.0);
+        assert!(default_tag_weight("aside") < 0.0);
+        assert!(default_tag_weight("footer") < 0.0);
+        assert_eq!(default_tag_weight("div"), 0.0);
+        assert!(default_tag_weight("p") > 0.0);
+    }
+
+    #[test]
+    fn class_hint_recognizes_content_class() {
+        assert!(class_hint_score("article-body") > 0.0);
+        assert!(class_hint_score("entry-content") > 0.0);
+        assert!(class_hint_score("post-text") > 0.0);
+    }
+
+    #[test]
+    fn class_hint_penalizes_chrome_class() {
+        assert!(class_hint_score("site-footer") < 0.0);
+        assert!(class_hint_score("nav primary-nav") < 0.0);
+        assert!(class_hint_score("share-buttons") < 0.0);
+    }
+
+    #[test]
+    fn profile_for_listing_boosts_lists() {
+        let p = profile_for(PageType::Listing);
+        assert!((p.tag_weight)("ul") > (p.tag_weight)("p"));
+    }
+
+    #[test]
+    fn profile_for_docs_boosts_pre() {
+        let p = profile_for(PageType::Documentation);
+        assert!((p.tag_weight)("pre") > (p.tag_weight)("p"));
+    }
+
+    #[test]
+    fn profile_for_forum_reduces_link_density_penalty() {
+        let base = profile_for(PageType::Article);
+        let forum = profile_for(PageType::Forum);
+        assert!(forum.w_link_density < base.w_link_density);
+    }
+}

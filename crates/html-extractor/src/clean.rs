@@ -142,11 +142,13 @@ pub(crate) fn post_clean(
         }
         // Link-density filter for div/list/p — see trafilatura
         // `delete_by_link_density`.
-        if !options.favor_recall && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section") {
-            if is_link_dense(tree, idx, options.favor_precision) && idx != root {
-                skip.insert(idx);
-                continue;
-            }
+        if !options.favor_recall
+            && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
+            && is_link_dense(tree, idx, options.favor_precision)
+            && idx != root
+        {
+            skip.insert(idx);
+            continue;
         }
         for &c in &elem.children {
             stack.push(c);
@@ -194,15 +196,9 @@ fn is_link_dense(tree: &Tree, idx: usize, favor_precision: bool) -> bool {
     let mut link_chars = 0usize;
     tree.walk_subtree_text(idx, &mut |elem| {
         if elem.tag == "a" {
-            // accumulate the entire link subtree text
             link_chars += elem.own_text.chars().count();
-            // descend so nested formatting elements contribute their text too
-            true
-        } else if matches!(elem.tag.as_str(), "_dropped_") {
-            false
-        } else {
-            true
         }
+        elem.tag != "_dropped_"
     });
     let threshold = if favor_precision { 0.5 } else { 0.7 };
     let ratio = link_chars as f32 / total_chars as f32;
@@ -210,5 +206,36 @@ fn is_link_dense(tree: &Tree, idx: usize, favor_precision: bool) -> bool {
         ratio > threshold
     } else {
         ratio > threshold - 0.15
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chrome_regex_matches_known_chrome_classes() {
+        assert!(is_chrome("site-footer"));
+        assert!(is_chrome("primary-nav"));
+        assert!(is_chrome("sidebar-widget"));
+        assert!(is_chrome("breadcrumb-list"));
+        assert!(is_chrome("cookie-banner"));
+        assert!(is_chrome("related elated"));
+    }
+
+    #[test]
+    fn chrome_regex_ignores_content_classes() {
+        assert!(!is_chrome("article-body"));
+        assert!(!is_chrome("entry-content"));
+        assert!(!is_chrome("post-text"));
+    }
+
+    #[test]
+    fn share_ad_regex_matches() {
+        assert!(is_share_or_ad("share-buttons"));
+        assert!(is_share_or_ad("social-links"));
+        assert!(is_share_or_ad("sponsor"));
+        assert!(is_share_or_ad("ad"));
+        assert!(is_share_or_ad("advertisement"));
     }
 }

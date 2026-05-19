@@ -40,19 +40,15 @@ fn collect_head(tree: &Tree, head: usize, md: &mut Metadata) {
         match elem.tag.as_str() {
             "meta" => apply_meta(elem, md),
             "link" => apply_link(elem, md),
-            "title" => {
-                if md.title.is_none() {
-                    let t = strip_title(&tree.full_text(idx));
-                    if !t.is_empty() {
-                        md.title = Some(t);
-                    }
+            "title" if md.title.is_none() => {
+                let t = strip_title(&tree.full_text(idx));
+                if !t.is_empty() {
+                    md.title = Some(t);
                 }
             }
-            "html" => {
-                if md.language.is_none() {
-                    if let Some(lang) = elem.attr("lang") {
-                        md.language = Some(lang.to_string());
-                    }
+            "html" if md.language.is_none() => {
+                if let Some(lang) = elem.attr("lang") {
+                    md.language = Some(lang.to_string());
                 }
             }
             _ => {}
@@ -236,5 +232,53 @@ fn jsonld_url(v: &serde_json::Value) -> Option<String> {
         }
         serde_json::Value::Array(items) => items.iter().find_map(jsonld_url),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+
+    #[test]
+    fn extracts_basic_meta_and_og() {
+        let html = r#"<html lang="es">
+            <head>
+                <title>Hi</title>
+                <meta name="author" content="A. Writer">
+                <meta name="description" content="Desc">
+                <meta property="og:site_name" content="Site">
+                <meta property="og:image" content="https://x/a.png">
+                <link rel="canonical" href="https://x/canon">
+            </head><body><p>x</p></body></html>"#;
+        let tree = parse(html).unwrap();
+        let md = extract(&tree);
+        assert_eq!(md.author.as_deref(), Some("A. Writer"));
+        assert_eq!(md.description.as_deref(), Some("Desc"));
+        assert_eq!(md.site_name.as_deref(), Some("Site"));
+        assert_eq!(md.image_url.as_deref(), Some("https://x/a.png"));
+        assert_eq!(md.canonical_url.as_deref(), Some("https://x/canon"));
+        assert_eq!(md.language.as_deref(), Some("es"));
+        assert_eq!(md.title.as_deref(), Some("Hi"));
+    }
+
+    #[test]
+    fn jsonld_article_pulls_headline_and_date() {
+        let html = r#"<html><head><script type="application/ld+json">
+            {"@type":"NewsArticle","headline":"Big news","datePublished":"2024-01-02","author":{"name":"J. Reporter"}}
+        </script></head><body><p>x</p></body></html>"#;
+        let tree = parse(html).unwrap();
+        let md = extract(&tree);
+        assert_eq!(md.title.as_deref(), Some("Big news"));
+        assert_eq!(md.published_date.as_deref(), Some("2024-01-02"));
+        assert_eq!(md.author.as_deref(), Some("J. Reporter"));
+    }
+
+    #[test]
+    fn meta_keywords_split() {
+        let html = r#"<html><head><meta name="keywords" content="alpha, beta , gamma"></head><body></body></html>"#;
+        let tree = parse(html).unwrap();
+        let md = extract(&tree);
+        assert_eq!(md.keywords, vec!["alpha", "beta", "gamma"]);
     }
 }

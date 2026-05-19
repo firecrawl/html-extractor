@@ -112,3 +112,42 @@ fn first_title_text(tree: &Tree, head: usize) -> String {
         String::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_a_minimal_document() {
+        let tree = parse("<html><body><p>hi</p></body></html>").unwrap();
+        assert!(tree.nodes.iter().any(|n| n.tag == "p"));
+        assert!(tree.body != usize::MAX);
+    }
+
+    #[test]
+    fn drops_html_comments() {
+        let tree = parse("<html><body><!-- x --><p>hi</p></body></html>").unwrap();
+        // Comments shouldn't show up as own_text on any element.
+        for n in &tree.nodes {
+            assert!(!n.own_text.contains("x"));
+        }
+    }
+
+    #[test]
+    fn collects_title_text_eagerly() {
+        let tree = parse("<html><head><title>My Title</title></head><body><p>x</p></body></html>")
+            .unwrap();
+        assert_eq!(tree.title_text, "My Title");
+    }
+
+    #[test]
+    fn collects_html_lang() {
+        let tree = parse("<html lang='fr'><body><p>x</p></body></html>").unwrap();
+        assert_eq!(tree.html_lang.as_deref(), Some("fr"));
+    }
+
+    #[test]
+    fn malformed_html_does_not_panic() {
+        let _ = parse("<html><body><div><p>hi");
+    }
+}

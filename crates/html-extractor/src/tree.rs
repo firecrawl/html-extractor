@@ -172,6 +172,7 @@ impl Tree {
     }
 
     /// Descendant tag count (excluding `idx` itself, excluding dropped).
+    #[allow(dead_code)]
     pub fn descendant_tag_count(&self, idx: usize) -> usize {
         let mut n = 0usize;
         self.walk_subtree_text(idx, &mut |elem| {

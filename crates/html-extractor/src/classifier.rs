@@ -180,3 +180,54 @@ struct TagCounts {
     li: usize,
     code: usize,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+    use crate::types::Metadata;
+
+    fn classify_html(html: &str, url: Option<&str>) -> (PageType, f32) {
+        let tree = parse(html).unwrap();
+        classify(&tree, url, &Metadata::default())
+    }
+
+    #[test]
+    fn url_with_article_path_classifies_as_article() {
+        let html = "<html><body><article><h1>x</h1><p>hello world</p></article></body></html>";
+        let (pt, _) = classify_html(html, Some("https://example.com/news/2024/foo"));
+        assert_eq!(pt, PageType::Article);
+    }
+
+    #[test]
+    fn product_url_overrides_article_tag() {
+        let html = "<html><body><div class='product-detail'><h1>Widget</h1></div></body></html>";
+        let (pt, _) = classify_html(html, Some("https://shop.example.com/products/sku-1234"));
+        assert_eq!(pt, PageType::Product);
+    }
+
+    #[test]
+    fn docs_url_classifies_as_documentation() {
+        let html = "<html><body><main><h2>API</h2><pre><code>fn x() {}</code></pre></main></body></html>";
+        let (pt, _) = classify_html(html, Some("https://example.com/docs/api/x"));
+        assert_eq!(pt, PageType::Documentation);
+    }
+
+    #[test]
+    fn no_signals_returns_other() {
+        let html = "<html><body><div>hello</div></body></html>";
+        let (pt, _) = classify_html(html, None);
+        assert_eq!(pt, PageType::Other);
+    }
+
+    #[test]
+    fn listing_inferred_from_many_li() {
+        let mut html = String::from("<html><body><ul>");
+        for i in 0..60 {
+            html.push_str(&format!("<li>item {i}</li>"));
+        }
+        html.push_str("</ul></body></html>");
+        let (pt, _) = classify_html(&html, None);
+        assert_eq!(pt, PageType::Listing);
+    }
+}

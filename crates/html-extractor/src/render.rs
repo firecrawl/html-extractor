@@ -491,8 +491,7 @@ fn push_text(text: &str, ctx: &mut RenderCtx<'_>) {
     let prepared = if ctx.in_pre {
         text.to_string()
     } else {
-        let trimmed = collapse_ws(text);
-        trimmed
+        collapse_ws(text)
     };
     if prepared.is_empty() {
         return;
@@ -564,4 +563,25 @@ fn normalize_whitespace(s: &str) -> String {
 
 fn escape_table_cell(s: &str) -> String {
     s.replace('|', "\\|").replace('\n', " ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collapses_whitespace_runs() {
+        assert_eq!(collapse_ws("  hello   world  "), "hello world");
+    }
+
+    #[test]
+    fn normalize_collapses_blank_lines() {
+        let n = normalize_whitespace("a\n\n\n\nb");
+        assert_eq!(n, "a\n\nb");
+    }
+
+    #[test]
+    fn escape_table_cell_handles_pipes_and_newlines() {
+        assert_eq!(escape_table_cell("a|b\nc"), "a\\|b c");
+    }
 }
