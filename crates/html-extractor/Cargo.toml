@@ -1,0 +1,30 @@
+[package]
+name = "html-extractor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fast HTML main-content extractor: scored tree walk inspired by trafilatura, outputs clean markdown."
+readme = "../../README.md"
+
+[dependencies]
+html5ever = { workspace = true }
+markup5ever = { workspace = true }
+markup5ever_rcdom = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true }
+url = { workspace = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["plotters", "cargo_bench_support"] }
+
+[[bench]]
+name = "throughput"
+harness = false

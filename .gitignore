@@ -1,0 +1,10 @@
+/target
+**/*.rs.bk
+.DS_Store
+
+# napi-rs build artifacts
+crates/html-extractor-napi/*.node
+crates/html-extractor-napi/index.js
+crates/html-extractor-napi/index.d.ts
+crates/html-extractor-napi/npm/
+node_modules/
