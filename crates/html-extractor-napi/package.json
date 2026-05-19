@@ -1,6 +1,6 @@
 {
   "name": "@firecrawl/html-extractor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Fast HTML main-content extractor with Node.js bindings. Native Rust performance via napi-rs.",
   "main": "index.js",
   "types": "index.d.ts",
