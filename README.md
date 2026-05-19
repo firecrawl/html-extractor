@@ -2,7 +2,7 @@
 
 A fast, streaming, page-type-aware HTML main-content extractor in Rust, with NAPI bindings for Node.js. A general-purpose library for pulling article-style content out of raw HTML pages.
 
-Algorithm inspired by Python's [trafilatura](https://github.com/adbar/trafilatura) (`~/Code/trafilatura` is the read-only reference). Implementation is from scratch — **do not port from any existing Rust/Go/JS port**. Inspiration is from the algorithm + decisions documented in the Python source; the implementation, API surface, optimizations, and architecture are ours.
+Algorithm inspired by Python's [trafilatura](https://github.com/adbar/trafilatura). Implementation is from scratch — the algorithm comes from studying the Python source; the API surface, optimizations, and architecture are ours.
 
 ## What this is
 
@@ -13,17 +13,6 @@ A library you call with raw HTML and get back the article content, stripped of n
 - Heuristic CSS-selector blocklists are brittle: they break on hashed class names and don't generalize across non-article page types (product, listing, forum, documentation).
 - Existing Rust ports of trafilatura are pre-1.0 with limited maintenance.
 - A self-contained library we can ship as open source and progressively optimize.
-
-## Documents
-
-Read these in order if you're new (or if you're the agent driving the implementation loop):
-
-1. **[SPEC.md](./SPEC.md)** — what to build. Input/output contract, API surface, configuration options, error handling, performance targets, acceptance criteria.
-2. **[ALGORITHM.md](./ALGORITHM.md)** — how the trafilatura-inspired algorithm works. Five-stage pipeline, per-feature scoring, fallback chain. Includes pointers to the relevant files in `~/Code/trafilatura` so you can study the reference implementation.
-3. **[OPTIMIZATIONS.md](./OPTIMIZATIONS.md)** — what we want to do differently from trafilatura, and why. Streaming SAX parser, page-type-aware extraction, per-element confidence, computed-style hints, native interop with `simd-html-to-md`.
-4. **[TESTING.md](./TESTING.md)** — test strategy. Golden corpus, fixtures, unit + integration + benchmark requirements. CI gates.
-5. **[ROADMAP.md](./ROADMAP.md)** — phased delivery. Each phase has acceptance criteria and ships independent value.
-6. **[CLAUDE.md](./CLAUDE.md)** — agent-specific operating instructions. Constraints (do not push, do not consult ports, etc.), expected commit cadence, what to do when stuck.
 
 ## High-level architecture
 
@@ -71,18 +60,14 @@ Read these in order if you're new (or if you're the agent driving the implementa
 
 ## Tech stack (high level)
 
-- **Rust** for the core library. Modern, idiomatic, no `unsafe` unless justified.
-- **NAPI bindings** via `napi-rs` for Node.js / Bun consumers. Pre-built binaries for the platforms Firecrawl deploys to.
+- **Rust** for the core library. Modern, idiomatic, no `unsafe`.
+- **NAPI bindings** via `napi-rs` for Node.js / Bun consumers. Pre-built binaries for Linux x64, macOS arm64, Windows x64.
 - **`criterion`** for benchmarks. Throughput numbers in CI.
 - **Golden corpus** of HTML fixtures with expected extractions, in the test suite.
 
-Crate name is TBD — the working name in code can be whatever; final cargo/npm name will be decided before first publish. Suggested options include `marrow`, `crux`, `pith`, `vellum`. Use a placeholder in `Cargo.toml` until the call is made.
-
 ## Status
 
-Phase 1 (algorithm parity) and Phase 2 (NAPI bindings) are complete. See `ROADMAP.md` for the per-checkbox state and `STATUS.md` for the summary.
-
-- 34 Rust unit + integration + doctests
+- 34 Rust unit + integration + doctests, all passing
 - 54 golden-corpus fixtures across 8 categories, all passing
 - 7 NAPI binding tests, all passing
 
@@ -108,18 +93,24 @@ Run the bundled example: `cargo run --example extract_one -p html-extractor`.
 ## Use from Node
 
 ```bash
-cd crates/html-extractor-napi
-npm install
-npm run build           # produces html-extractor.<triple>.node for this host
+npm install @firecrawl/html-extractor
 ```
 
 ```js
-import { extract } from 'html-extractor'        // or use require()
+import { extract } from '@firecrawl/html-extractor'
 
 const html = '<html>…</html>'
 const result = await extract(html, { url: 'https://example.com/article' })
 console.log(result.markdown)
 console.log(result.metadata)
+```
+
+Or build the addon locally:
+
+```bash
+cd crates/html-extractor-napi
+npm install
+npm run build           # produces html-extractor.<triple>.node for this host
 ```
 
 Run the bundled example: `node examples/node-extract.mjs`.
@@ -138,4 +129,4 @@ These are DOM-based numbers. A streaming backend (planned) is expected to lift t
 
 ## License
 
-TBD — most likely Apache-2.0 (matches Firecrawl's other OSS).
+[Apache-2.0](./LICENSE).

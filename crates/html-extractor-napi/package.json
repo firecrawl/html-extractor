@@ -1,25 +1,43 @@
 {
-  "name": "html-extractor",
+  "name": "@firecrawl/html-extractor",
   "version": "0.1.0",
-  "description": "Fast HTML main-content extractor with Node.js bindings.",
+  "description": "Fast HTML main-content extractor with Node.js bindings. Native Rust performance via napi-rs.",
   "main": "index.js",
   "types": "index.d.ts",
-  "private": true,
+  "license": "Apache-2.0",
+  "keywords": [
+    "html",
+    "html-extraction",
+    "main-content",
+    "trafilatura",
+    "readability",
+    "napi",
+    "rust",
+    "firecrawl"
+  ],
   "files": [
     "index.js",
     "index.d.ts",
-    "*.node"
+    "*.node",
+    "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firecrawl/html-extractor"
+  },
+  "homepage": "https://github.com/firecrawl/html-extractor",
+  "publishConfig": {
+    "access": "public"
+  },
   "napi": {
-    "name": "html-extractor",
-    "triples": {
-      "defaults": false,
-      "additional": [
-        "aarch64-apple-darwin",
-        "x86_64-apple-darwin",
-        "x86_64-unknown-linux-gnu",
-        "aarch64-unknown-linux-gnu"
-      ]
+    "binaryName": "html-extractor",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc"
+    ],
+    "package": {
+      "name": "@firecrawl/html-extractor-js"
     }
   },
   "scripts": {
@@ -28,6 +46,6 @@
     "test": "node --test __test__"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.2.0"
+    "@napi-rs/cli": "^3.4.1"
   }
 }

@@ -1,0 +1,116 @@
+name: Release (npm)
+
+# Manual trigger only — flip `publish` to true when you actually want to push to npm.
+# To switch to auto-publish on version bump (pdf-inspector pattern), replace this
+# trigger with:
+#   on:
+#     push:
+#       branches: [main]
+#       paths: ['crates/html-extractor-napi/package.json']
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to npm after build? (false = dry-run, just build all platforms)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-napi-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-napi-
+
+      - name: Install dependencies
+        working-directory: crates/html-extractor-napi
+        run: bun install
+
+      - name: Build native addon
+        working-directory: crates/html-extractor-napi
+        run: bunx napi build --platform --release
+
+      - name: Upload native binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.target }}
+          path: crates/html-extractor-napi/*.node
+          if-no-files-found: error
+
+      - name: Upload generated JS bindings
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-bindings
+          path: |
+            crates/html-extractor-napi/index.js
+            crates/html-extractor-napi/index.d.ts
+          if-no-files-found: error
+
+  publish:
+    name: Publish to npm
+    needs: build
+    if: inputs.publish == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: crates/html-extractor-napi/artifacts
+
+      - name: Collect binaries and publish
+        working-directory: crates/html-extractor-napi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cp artifacts/bindings-*/*.node .
+          cp artifacts/js-bindings/index.js .
+          cp artifacts/js-bindings/index.d.ts .
+
+          echo "=== Package contents ==="
+          ls -la *.node index.js index.d.ts
+
+          npm publish --provenance --access public
