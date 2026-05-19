@@ -1,26 +1,42 @@
-name: Release (npm)
+name: Publish npm package
 
-# Manual trigger only — flip `publish` to true when you actually want to push to npm.
-# To switch to auto-publish on version bump (pdf-inspector pattern), replace this
-# trigger with:
-#   on:
-#     push:
-#       branches: [main]
-#       paths: ['crates/html-extractor-napi/package.json']
 on:
-  workflow_dispatch:
-    inputs:
-      publish:
-        description: "Publish to npm after build? (false = dry-run, just build all platforms)"
-        type: boolean
-        default: false
+  push:
+    branches: [main]
+    paths: ["crates/html-extractor-napi/package.json"]
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  check-version:
+    name: Check version change
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if version changed
+        id: check
+        run: |
+          NEW_VERSION=$(node -p "require('./crates/html-extractor-napi/package.json').version")
+          OLD_VERSION=$(git show HEAD~1:crates/html-extractor-napi/package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
+          echo "old=$OLD_VERSION new=$NEW_VERSION"
+          if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -82,18 +98,17 @@ jobs:
 
   publish:
     name: Publish to npm
-    needs: build
-    if: inputs.publish == true
+    needs: [check-version, build]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Download all artifacts
@@ -103,8 +118,6 @@ jobs:
 
       - name: Collect binaries and publish
         working-directory: crates/html-extractor-napi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cp artifacts/bindings-*/*.node .
           cp artifacts/js-bindings/index.js .
