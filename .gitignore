@@ -2,9 +2,8 @@
 **/*.rs.bk
 .DS_Store
 
-# napi-rs build artifacts
+# napi-rs build artifacts — per-platform .node binaries are not tracked,
+# but the loader shim (index.js) and type defs (index.d.ts) are.
 crates/html-extractor-napi/*.node
-crates/html-extractor-napi/index.js
-crates/html-extractor-napi/index.d.ts
 crates/html-extractor-napi/npm/
 node_modules/
