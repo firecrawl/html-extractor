@@ -1,0 +1,9 @@
+{
+  "page_type": "article",
+  "title": "Notes from a long walk",
+  "author": "Jamie Wanderer",
+  "min_quality": 0.3,
+  "must_not_contain": [
+    "\u00a9 2024"
+  ]
+}

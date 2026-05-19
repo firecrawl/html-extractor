@@ -1,0 +1,7 @@
+{
+  "page_type": "collection",
+  "min_quality": 0.05,
+  "must_not_contain": [
+    "\u00a9 2024 Example"
+  ]
+}

@@ -115,7 +115,10 @@ fn apply_meta(elem: &crate::tree::Element, md: &mut Metadata) {
 }
 
 fn apply_link(elem: &crate::tree::Element, md: &mut Metadata) {
-    let rel = elem.attr("rel").map(|s| s.to_ascii_lowercase()).unwrap_or_default();
+    let rel = elem
+        .attr("rel")
+        .map(|s| s.to_ascii_lowercase())
+        .unwrap_or_default();
     if rel.split_whitespace().any(|t| t == "canonical") {
         if let Some(href) = elem.attr("href") {
             set_if_empty(&mut md.canonical_url, href.trim());
@@ -170,7 +173,9 @@ fn absorb_jsonld(v: &serde_json::Value, md: &mut Metadata) {
             if let Some(graph) = map.get("@graph") {
                 absorb_jsonld(graph, md);
             }
-            if let Some(serde_json::Value::String(t)) = map.get("headline").or_else(|| map.get("name")) {
+            if let Some(serde_json::Value::String(t)) =
+                map.get("headline").or_else(|| map.get("name"))
+            {
                 set_if_empty(&mut md.title, t);
             }
             if let Some(serde_json::Value::String(d)) = map.get("description") {

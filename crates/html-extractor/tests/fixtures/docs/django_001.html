@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Querysets — ExampleDocs</title></head>
+<body>
+<header class="site-header"><nav><a href="/">Home</a></nav></header>
+<aside class="toc-sidebar">Table of contents</aside>
+<main class="docs-content">
+<article>
+<h1>Querysets</h1>
+<p>Querysets are Django's chainable, lazily evaluated database query interface.</p>
+<h2>Usage</h2>
+<pre><code class="language-rust">Author.objects.filter(active=True).order_by('-joined')[:5]</code></pre>
+<h2>Reference</h2>
+<p>Each chained call returns a new Queryset; the underlying SQL is constructed at iteration time.</p>
+</article>
+</main>
+<footer class="site-footer">© 2024 ExampleDocs</footer>
+</body></html>

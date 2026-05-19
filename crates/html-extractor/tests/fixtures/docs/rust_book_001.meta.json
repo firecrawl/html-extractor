@@ -1,0 +1,9 @@
+{
+  "page_type": "documentation",
+  "title": "Iterators",
+  "min_quality": 0.1,
+  "must_not_contain": [
+    "Table of contents",
+    "\u00a9 2024 ExampleDocs"
+  ]
+}

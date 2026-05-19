@@ -1,0 +1,9 @@
+{
+  "page_type": "article",
+  "title": "Library expansion finally opens to the public",
+  "author": "Sam Reporter",
+  "min_quality": 0.3,
+  "must_not_contain": [
+    "\u00a9 2024"
+  ]
+}

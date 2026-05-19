@@ -1,0 +1,12 @@
+{
+  "page_type": "article",
+  "title": "Le festival d'\u00e9t\u00e9 commence demain",
+  "author": "Camille Cultureuse",
+  "language": "fr",
+  "min_quality": 0.4,
+  "must_not_contain": [
+    "Sponsored content goes here",
+    "\u00a9 2024 Example News",
+    "Related"
+  ]
+}

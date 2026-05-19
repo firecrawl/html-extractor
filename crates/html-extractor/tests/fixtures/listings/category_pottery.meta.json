@@ -1,0 +1,9 @@
+{
+  "page_type": "listing",
+  "title": "All pottery",
+  "min_quality": 0.0,
+  "must_not_contain": [
+    "Filters here",
+    "\u00a9 2024 ExampleCatalog"
+  ]
+}

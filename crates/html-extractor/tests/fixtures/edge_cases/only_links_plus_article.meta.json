@@ -1,0 +1,7 @@
+{
+  "min_quality": 0.05,
+  "must_not_contain": [
+    "nav item"
+  ],
+  "page_type": null
+}

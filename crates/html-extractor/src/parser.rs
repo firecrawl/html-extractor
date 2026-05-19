@@ -83,7 +83,9 @@ fn walk(node: &Handle, parent: usize, tree: &mut Tree) {
                 // dropped at parse time, satisfies the Stage-1 "drop HTML
                 // comments" requirement cheaply
             }
-            NodeData::Document | NodeData::Doctype { .. } | NodeData::ProcessingInstruction { .. } => {
+            NodeData::Document
+            | NodeData::Doctype { .. }
+            | NodeData::ProcessingInstruction { .. } => {
                 walk(child, parent, tree);
             }
         }

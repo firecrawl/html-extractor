@@ -1,0 +1,12 @@
+{
+  "page_type": "article",
+  "title": "Wirtschaftswachstum bleibt stabil",
+  "author": "Max Wirtschaft",
+  "language": "de",
+  "min_quality": 0.4,
+  "must_not_contain": [
+    "Sponsored content goes here",
+    "\u00a9 2024 Example News",
+    "Related"
+  ]
+}

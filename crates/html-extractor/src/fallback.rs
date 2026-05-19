@@ -29,13 +29,17 @@ pub(crate) fn fallback(tree: &Tree, _options: &ExtractOptions) -> (Option<usize>
 
 fn justext_pick(tree: &Tree) -> Option<usize> {
     // Per-paragraph classification.
-    let mut good_parents: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+    let mut good_parents: std::collections::HashMap<usize, usize> =
+        std::collections::HashMap::new();
     tree.walk_pre(tree.body, |idx| {
         let elem = tree.get(idx);
         if elem.tag == "_dropped_" {
             return false;
         }
-        if !matches!(elem.tag.as_str(), "p" | "li" | "blockquote" | "pre" | "section") {
+        if !matches!(
+            elem.tag.as_str(),
+            "p" | "li" | "blockquote" | "pre" | "section"
+        ) {
             return true;
         }
         let txt = tree.full_text(idx);
@@ -73,7 +77,10 @@ fn justext_pick(tree: &Tree) -> Option<usize> {
         }
         true
     });
-    good_parents.into_iter().max_by_key(|&(_, n)| n).map(|(idx, _)| idx)
+    good_parents
+        .into_iter()
+        .max_by_key(|&(_, n)| n)
+        .map(|(idx, _)| idx)
 }
 
 fn readability_pick(tree: &Tree) -> Option<usize> {
@@ -127,11 +134,16 @@ const STOP_WORDS: &[&str] = &[
     " are ", " be ", " not ", " from ", " by ", " this ", " it ", " an ", " as ", " at ", " or ",
     " have ", " but ", " has ", " they ", " we ", " their ", " its ", " more ", " also ",
     // a tiny Spanish/French/German set to soften the English-only bias
-    " la ", " el ", " que ", " los ", " las ", " et ", " le ", " une ", " les ", " der ",
-    " die ", " und ",
+    " la ", " el ", " que ", " los ", " las ", " et ", " le ", " une ", " les ", " der ", " die ",
+    " und ",
 ];
 
 fn has_stop_words(text: &str) -> bool {
     let lower = format!(" {} ", text.to_lowercase());
-    STOP_WORDS.iter().filter(|w| lower.contains(*w)).take(2).count() >= 1
+    STOP_WORDS
+        .iter()
+        .filter(|w| lower.contains(*w))
+        .take(2)
+        .count()
+        >= 1
 }

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Decorators — ExampleDocs</title></head>
+<body>
+<header class="site-header"><nav><a href="/">Home</a></nav></header>
+<aside class="toc-sidebar">Table of contents</aside>
+<main class="docs-content">
+<article>
+<h1>Decorators</h1>
+<p>Decorators are a syntactic sugar for wrapping functions and methods.</p>
+<h2>Usage</h2>
+<pre><code class="language-rust">def trace(fn):
+    def inner(*a, **kw):
+        return fn(*a, **kw)
+    return inner
+@trace
+def add(a, b):
+    return a + b</code></pre>
+<h2>Reference</h2>
+<p>A decorator is just a callable that takes a function and returns one. Stacking is allowed.</p>
+</article>
+</main>
+<footer class="site-footer">© 2024 ExampleDocs</footer>
+</body></html>

@@ -301,7 +301,9 @@ pub(crate) fn select_main(
         }
         match best {
             None => best = Some((idx, score, text_len.round() as usize)),
-            Some((_, bs, _)) if score > bs + 0.5 => best = Some((idx, score, text_len.round() as usize)),
+            Some((_, bs, _)) if score > bs + 0.5 => {
+                best = Some((idx, score, text_len.round() as usize))
+            }
             _ => {}
         }
     }
@@ -322,7 +324,12 @@ fn fast_path(tree: &Tree, body: usize, options: &ExtractOptions) -> Option<usize
             return false;
         }
         if elem.tag == "main" || elem.tag == "article" {
-            let text = tree.text_len_excluding_links(idx);
+            // For pages that are mostly link-text (listings), the
+            // text-excluding-links check is too strict; fall back to total
+            // text length.
+            let text = tree
+                .text_len_excluding_links(idx)
+                .max(tree.full_text(idx).chars().count() / 4);
             if text >= options.min_extraction_length.max(120) {
                 candidate = Some(idx);
                 return false;

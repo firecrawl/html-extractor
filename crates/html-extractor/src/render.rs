@@ -91,7 +91,8 @@ fn render_node(tree: &Tree, idx: usize, ctx: &mut RenderCtx<'_>) {
         "del" | "s" | "strike" => render_wrap(tree, idx, "~~", "~~", ctx),
         // Block-y wrappers — just walk children.
         "article" | "main" | "section" | "div" | "body" | "#document" | "header" | "nav"
-        | "footer" | "aside" | "span" | "html" | "details" | "summary" | "figure" | "figcaption" => {
+        | "footer" | "aside" | "span" | "html" | "details" | "summary" | "figure"
+        | "figcaption" => {
             if !elem.own_text.trim().is_empty() {
                 push_text(&elem.own_text, ctx);
             }

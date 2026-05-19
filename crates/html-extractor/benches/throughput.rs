@@ -12,7 +12,11 @@ const LARGE: &str = include_str!("../tests/fixtures/edge_cases/large_doc.html");
 
 fn bench_throughput(c: &mut Criterion) {
     let opts = ExtractOptions::default();
-    for (name, html) in [("small_10kb", SMALL), ("medium_200kb", MEDIUM), ("large_2mb", LARGE)] {
+    for (name, html) in [
+        ("small_10kb", SMALL),
+        ("medium_200kb", MEDIUM),
+        ("large_2mb", LARGE),
+    ] {
         let bytes = html.len() as u64;
         let mut group = c.benchmark_group("extract");
         group.throughput(Throughput::Bytes(bytes));

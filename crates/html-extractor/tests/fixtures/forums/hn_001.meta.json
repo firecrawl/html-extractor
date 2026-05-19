@@ -1,0 +1,9 @@
+{
+  "page_type": "forum",
+  "title": "Show HN: A tiny library for parsing dates",
+  "min_quality": 0.15,
+  "must_not_contain": [
+    "Trending threads",
+    "\u00a9 2024 ExampleForum"
+  ]
+}

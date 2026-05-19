@@ -1,0 +1,12 @@
+{
+  "page_type": "article",
+  "title": "We should rethink municipal recycling",
+  "author": "Ade Op-Ed",
+  "language": "en",
+  "min_quality": 0.4,
+  "must_not_contain": [
+    "Sponsored content goes here",
+    "\u00a9 2024 Example News",
+    "Related"
+  ]
+}

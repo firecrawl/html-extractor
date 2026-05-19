@@ -1,0 +1,9 @@
+{
+  "page_type": "forum",
+  "title": "What's the best way to learn rust in 2024?",
+  "min_quality": 0.15,
+  "must_not_contain": [
+    "Trending threads",
+    "\u00a9 2024 ExampleForum"
+  ]
+}

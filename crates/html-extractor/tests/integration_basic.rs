@@ -17,9 +17,19 @@ fn extracts_simple_article_body() {
         "body text should be present"
     );
     // chrome should be gone
-    assert!(!r.markdown.contains("Other story one"), "related sidebar should be dropped");
-    assert!(!r.markdown.contains("All rights reserved"), "footer should be dropped");
-    assert!(r.extraction_quality > 0.3, "expected reasonable confidence, got {}", r.extraction_quality);
+    assert!(
+        !r.markdown.contains("Other story one"),
+        "related sidebar should be dropped"
+    );
+    assert!(
+        !r.markdown.contains("All rights reserved"),
+        "footer should be dropped"
+    );
+    assert!(
+        r.extraction_quality > 0.3,
+        "expected reasonable confidence, got {}",
+        r.extraction_quality
+    );
 }
 
 #[test]
@@ -99,6 +109,10 @@ fn page_with_no_semantic_markers_uses_scored_walk() {
         </body></html>
     "#;
     let r = extract(html, &ExtractOptions::default()).unwrap();
-    assert!(r.markdown.contains("first paragraph"), "got: {}", r.markdown);
+    assert!(
+        r.markdown.contains("first paragraph"),
+        "got: {}",
+        r.markdown
+    );
     assert!(!r.markdown.contains("copyright 2024"));
 }

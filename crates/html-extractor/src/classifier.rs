@@ -13,12 +13,10 @@ static URL_ARTICLE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)/(article|news|story|stories|blog|posts?|opinion|features?|columns?)(/|$)")
         .unwrap()
 });
-static URL_FORUM: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)/(forum|thread|discussion|topic|question)s?(/|$)").unwrap()
-});
-static URL_PRODUCT: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)/(product|item|sku|p|dp|gp/product)/").unwrap()
-});
+static URL_FORUM: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)/(forum|thread|discussion|topic|question)s?(/|$)").unwrap());
+static URL_PRODUCT: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)/(product|item|sku|p|dp|gp/product)/").unwrap());
 static URL_LISTING: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)/(category|categories|catalog|search|listing|browse|shop|tag|tags)(/|$|\?)")
         .unwrap()
@@ -36,23 +34,19 @@ static URL_SERVICE: Lazy<Regex> = Lazy::new(|| {
 static CLASS_FORUM: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(\b|_|-)(thread|forum|post-(list|item)|comment-list|qa-message)\b").unwrap()
 });
-static CLASS_PRODUCT: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)(\b|_|-)(product(-detail|-info|-page)?|item-detail|sku-)\b").unwrap());
-static CLASS_LISTING: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
-        r"(?i)(\b|_|-)(product-list|search-?results?|listing|cards?|product-grid|catalog)\b",
-    )
-    .unwrap()
+static CLASS_PRODUCT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(\b|_|-)(product(-detail|-info|-page)?|item-detail|sku-)\b").unwrap()
 });
-static CLASS_DOCS: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)(\b|_|-)(docs?(-content|-body)?|api-reference|sphinx)\b").unwrap());
+static CLASS_LISTING: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(\b|_|-)(product-list|search-?results?|listing|cards?|product-grid|catalog)\b")
+        .unwrap()
+});
+static CLASS_DOCS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(\b|_|-)(docs?(-content|-body)?|api-reference|sphinx)\b").unwrap()
+});
 
 /// Classify a parsed document.
-pub(crate) fn classify(
-    tree: &Tree,
-    url: Option<&str>,
-    metadata: &Metadata,
-) -> (PageType, f32) {
+pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (PageType, f32) {
     // Tally signals across sources. Each match contributes a small score; the
     // page type with the highest score wins. Confidence is `winner_score /
     // total_score`, floor 0.1.
@@ -121,7 +115,7 @@ pub(crate) fn classify(
     if tag_counts.article >= 1 || tag_counts.main >= 1 {
         scores[PageType::Article as usize] += 1.5;
     }
-    if tag_counts.li > 40 && tag_counts.article == 0 {
+    if tag_counts.li > 20 && tag_counts.article == 0 {
         scores[PageType::Listing as usize] += 2.0;
     }
     if tag_counts.code > 5 || tag_counts.h2 > 8 {
@@ -208,7 +202,8 @@ mod tests {
 
     #[test]
     fn docs_url_classifies_as_documentation() {
-        let html = "<html><body><main><h2>API</h2><pre><code>fn x() {}</code></pre></main></body></html>";
+        let html =
+            "<html><body><main><h2>API</h2><pre><code>fn x() {}</code></pre></main></body></html>";
         let (pt, _) = classify_html(html, Some("https://example.com/docs/api/x"));
         assert_eq!(pt, PageType::Documentation);
     }

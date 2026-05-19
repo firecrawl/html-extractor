@@ -28,15 +28,16 @@ const KILL_TAGS: &[&str] = &[
 const PRECISION_KILL_TAGS: &[&str] = &["aside", "nav", "footer", "header"];
 
 /// Tags whose own text is preserved but the wrapper itself adds no semantic
-/// value (mirrors trafilatura's `MANUALLY_STRIPPED`).
+/// value (mirrors trafilatura's `MANUALLY_STRIPPED`). We keep tbody/thead/tfoot
+/// in the tree because the table renderer descends through them; folding them
+/// to spans here would break table layout.
 const STRIP_TAGS: &[&str] = &[
     "abbr", "acronym", "address", "bdi", "bdo", "big", "cite", "data", "dfn", "font", "hgroup",
-    "ins", "mark", "ruby", "small", "tbody", "thead", "tfoot", "time", "noindex",
+    "ins", "mark", "ruby", "small", "time", "noindex",
 ];
 
-static HIDDEN_STYLE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)display\s*:\s*none|visibility\s*:\s*hidden").unwrap()
-});
+static HIDDEN_STYLE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)display\s*:\s*none|visibility\s*:\s*hidden").unwrap());
 
 /// Stage 1: pre-clean. Drops `<script>`, `<style>`, hidden elements, etc.
 pub(crate) fn pre_clean(tree: &mut Tree, options: &ExtractOptions) {
@@ -55,7 +56,12 @@ pub(crate) fn pre_clean(tree: &mut Tree, options: &ExtractOptions) {
                 return false;
             }
         }
-        if elem.has_attr("hidden") || elem.attr("aria-hidden").map(|v| v == "true").unwrap_or(false) {
+        if elem.has_attr("hidden")
+            || elem
+                .attr("aria-hidden")
+                .map(|v| v == "true")
+                .unwrap_or(false)
+        {
             // Edge case: aria-hidden on a link inside a card is content
             // duplication, but per ALGORITHM.md we accept the trafilatura
             // simplification — drop.
@@ -101,10 +107,25 @@ pub(crate) fn pre_clean(tree: &mut Tree, options: &ExtractOptions) {
 /// Returns the index of the cleaned subtree (same as input — we mutate the
 /// shared tree). Drops well-known chrome blocks inside the selection by class
 /// hints + link-density heuristics.
-pub(crate) fn post_clean(
+pub(crate) fn post_clean(tree: &Tree, root: usize, options: &ExtractOptions) -> CleanedRoot {
+    post_clean_inner(tree, root, options, true)
+}
+
+/// Like [`post_clean`] but skips the link-density filter — used when the page
+/// type is `Listing` / `Collection`, where the list IS the content.
+pub(crate) fn post_clean_lenient_links(
     tree: &Tree,
     root: usize,
     options: &ExtractOptions,
+) -> CleanedRoot {
+    post_clean_inner(tree, root, options, false)
+}
+
+fn post_clean_inner(
+    tree: &Tree,
+    root: usize,
+    options: &ExtractOptions,
+    apply_link_density: bool,
 ) -> CleanedRoot {
     // We don't mutate `tree` here; instead we collect a set of "skipped"
     // descendant indices that the renderer will respect. This keeps `tree`
@@ -142,7 +163,8 @@ pub(crate) fn post_clean(
         }
         // Link-density filter for div/list/p — see trafilatura
         // `delete_by_link_density`.
-        if !options.favor_recall
+        if apply_link_density
+            && !options.favor_recall
             && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
             && is_link_dense(tree, idx, options.favor_precision)
             && idx != root

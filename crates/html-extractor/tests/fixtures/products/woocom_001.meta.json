@@ -1,0 +1,9 @@
+{
+  "page_type": "product",
+  "title": "Cast iron bread pan",
+  "min_quality": 0.12,
+  "must_not_contain": [
+    "Cart contents here",
+    "\u00a9 2024 ExampleShop"
+  ]
+}

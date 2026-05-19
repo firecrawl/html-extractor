@@ -16,9 +16,7 @@ mod scoring;
 mod tree;
 mod types;
 
-pub use types::{
-    ExtractError, ExtractOptions, ExtractResult, ExtractStats, Metadata, PageType,
-};
+pub use types::{ExtractError, ExtractOptions, ExtractResult, ExtractStats, Metadata, PageType};
 
 /// Extract the main content of an HTML document, returning a structured
 /// [`ExtractResult`] containing markdown, page-type, metadata, and a confidence
@@ -80,7 +78,11 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
             let (fb_root, q) = fallback::fallback(&tree, options);
             (fb_root.or(Some(idx)), q.max(0.15), true)
         } else {
-            (Some(idx), confidence_from_score(score, kept_text_len), false)
+            (
+                Some(idx),
+                confidence_from_score(score, kept_text_len),
+                false,
+            )
         }
     } else {
         let (fb_root, q) = fallback::fallback(&tree, options);
@@ -89,7 +91,11 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
 
     // Stage 5: post-clean within the kept subtree, then render.
     let (markdown, text_chars) = if let Some(root) = final_root {
-        let cleaned = clean::post_clean(&tree, root, options);
+        let cleaned = if matches!(page_type, PageType::Listing | PageType::Collection) {
+            clean::post_clean_lenient_links(&tree, root, options)
+        } else {
+            clean::post_clean(&tree, root, options)
+        };
         render::render(&tree, &cleaned, options)
     } else {
         (String::new(), 0)
