@@ -1,0 +1,19 @@
+[package]
+name = "html-extractor-napi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Node.js / Bun bindings for the html-extractor crate via napi-rs."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+html-extractor = { workspace = true }
+napi = { version = "3", default-features = false, features = ["napi9", "tokio_rt"] }
+napi-derive = { version = "3", default-features = false, features = ["type-def"] }
+
+[build-dependencies]
+napi-build = "2"

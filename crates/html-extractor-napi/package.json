@@ -1,0 +1,33 @@
+{
+  "name": "html-extractor",
+  "version": "0.1.0",
+  "description": "Fast HTML main-content extractor with Node.js bindings.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true,
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ],
+  "napi": {
+    "name": "html-extractor",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release --js index.js --dts index.d.ts",
+    "build:debug": "napi build --platform --js index.js --dts index.d.ts",
+    "test": "node --test __test__"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.2.0"
+  }
+}
