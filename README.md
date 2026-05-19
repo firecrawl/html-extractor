@@ -80,7 +80,61 @@ Crate name is TBD — the working name in code can be whatever; final cargo/npm 
 
 ## Status
 
-See `ROADMAP.md`. The agent driving this loop should update milestone checkboxes as phases complete.
+Phase 1 (algorithm parity) and Phase 2 (NAPI bindings) are complete. See `ROADMAP.md` for the per-checkbox state and `STATUS.md` for the summary.
+
+- 34 Rust unit + integration + doctests
+- 54 golden-corpus fixtures across 8 categories, all passing
+- 7 NAPI binding tests, all passing
+
+## Use from Rust
+
+```toml
+[dependencies]
+html-extractor = "0.1"
+```
+
+```rust
+use html_extractor::{extract, ExtractOptions};
+
+let html = std::fs::read_to_string("page.html")?;
+let result = extract(&html, &ExtractOptions::default())?;
+println!("{}", result.markdown);
+println!("page_type = {:?}", result.page_type);
+println!("quality   = {:.2}", result.extraction_quality);
+```
+
+Run the bundled example: `cargo run --example extract_one -p html-extractor`.
+
+## Use from Node
+
+```bash
+cd crates/html-extractor-napi
+npm install
+npm run build           # produces html-extractor.<triple>.node for this host
+```
+
+```js
+import { extract } from 'html-extractor'        // or use require()
+
+const html = '<html>…</html>'
+const result = await extract(html, { url: 'https://example.com/article' })
+console.log(result.markdown)
+console.log(result.metadata)
+```
+
+Run the bundled example: `node examples/node-extract.mjs`.
+
+## Throughput
+
+`cargo bench -p html-extractor --bench throughput -- --quick` on an Apple M-series, release build:
+
+| Input               | Time    | Throughput   |
+|---------------------|---------|--------------|
+| Small (~10 KB)      | ~29 µs  | ~67 MiB/s    |
+| Medium (~148 KB)    | ~900 µs | ~156 MiB/s   |
+| Large (~1.7 MB)     | ~10 ms  | ~157 MiB/s   |
+
+These are DOM-based numbers. A streaming backend (planned) is expected to lift these further.
 
 ## License
 

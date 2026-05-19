@@ -56,10 +56,10 @@ pub struct ExtractOptions {
     /// page-type classification, and language fallback.
     pub url: Option<String>,
     /// Be more aggressive about dropping anything ambiguous. Lower recall,
-    /// higher precision. Mutually exclusive with [`favor_recall`].
+    /// higher precision. Mutually exclusive with `favor_recall`.
     pub favor_precision: bool,
     /// Be more lenient — keep ambiguous content. Higher recall, lower
-    /// precision. Mutually exclusive with [`favor_precision`].
+    /// precision. Mutually exclusive with `favor_precision`.
     pub favor_recall: bool,
     /// Include the plain-text version in the result.
     pub output_text: bool,
