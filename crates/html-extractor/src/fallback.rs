@@ -130,12 +130,31 @@ fn subtree_link_chars(tree: &Tree, idx: usize) -> usize {
 }
 
 const STOP_WORDS: &[&str] = &[
+    // English
     " the ", " and ", " of ", " to ", " in ", " is ", " that ", " for ", " with ", " on ", " was ",
     " are ", " be ", " not ", " from ", " by ", " this ", " it ", " an ", " as ", " at ", " or ",
-    " have ", " but ", " has ", " they ", " we ", " their ", " its ", " more ", " also ",
-    // a tiny Spanish/French/German set to soften the English-only bias
-    " la ", " el ", " que ", " los ", " las ", " et ", " le ", " une ", " les ", " der ", " die ",
-    " und ",
+    " have ", " but ", " has ", " they ", " we ", " their ", " its ", " more ", " also ", " all ",
+    " can ", " had ", " will ", " would ", " been ", " one ", " out ", " when ", " which ",
+    " who ", " these ", " those ", // German
+    " der ", " die ", " das ", " und ", " ist ", " nicht ", " auf ", " mit ", " für ", " von ",
+    " zu ", " aus ", " bei ", " nach ", " im ", " am ", " eine ", " einen ", " einem ", " einer ",
+    " den ", " als ", " auch ", " werden ", " wird ", " wurde ", " sich ", " sind ", " war ",
+    " noch ", " nur ", " wenn ", " man ", " sie ", " es ", " ein ", " des ", " dem ", " durch ",
+    // Spanish
+    " el ", " la ", " los ", " las ", " que ", " de ", " del ", " en ", " un ", " una ", " unos ",
+    " unas ", " por ", " con ", " su ", " sus ", " como ", " es ", " son ", " para ", " no ",
+    " se ", " lo ", " ha ", " había ", " sin ", " sobre ", // French
+    " le ", " la ", " les ", " un ", " une ", " des ", " et ", " ou ", " de ", " du ", " dans ",
+    " avec ", " pour ", " sur ", " que ", " qui ", " est ", " sont ", " ne ", " ce ", " cette ",
+    " ces ", " son ", " ses ", " au ", " aux ", " par ", " pas ", // Italian
+    " il ", " lo ", " gli ", " le ", " di ", " da ", " in ", " con ", " su ", " per ", " tra ",
+    " fra ", " e ", " è ", " sono ", " che ", " un ", " una ", " uno ", " del ", " della ",
+    " dei ", " delle ", " si ", " ma ", " non ", // Portuguese
+    " o ", " a ", " os ", " as ", " de ", " da ", " do ", " das ", " dos ", " e ", " em ", " com ",
+    " para ", " que ", " é ", " são ", " um ", " uma ", " uns ", " umas ", " no ", " na ", " nos ",
+    " nas ", " por ", " se ", // Polish (corpus has some Polish pages)
+    " i ", " w ", " na ", " z ", " do ", " że ", " jest ", " to ", " nie ", " jak ", " co ",
+    " się ",
 ];
 
 fn has_stop_words(text: &str) -> bool {
