@@ -196,14 +196,28 @@ pub(crate) struct CleanedRoot {
 
 static CHROME_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        "(?i)(^|[ _-])(nav(bar)?|footer|sidebar|breadcrumb|cookie|consent|newsletter|subnav|banner|tag-list|related|elated|widget|attachment|user-(info|profile)|byline|rating|teaser|paywall|paid-?content|outbrain|taboola|criteo|most-?popular|mol-factbox|comments?-?(title|list)|signin|nocomments|reply-?|hide-print|noprint|skip-?link|site-(header|footer)|page-(header|footer)|menu|navigation|toolbar)($|[ _-])",
+        "(?i)(^|[ _-])(nav(bar)?|footer|sidebar|breadcrumb|cookie|consent|newsletter|\
+         subnav|banner|tag-list|related|elated|widget|attachment|user-(info|profile)|\
+         byline(-?author)?|rating|teaser|paywall|paid-?content|outbrain|taboola|criteo|\
+         most-?popular|popular-?(posts|articles|stories)?|trending(-?(now|posts))?|\
+         recommend(ed|ation)s?|mol-factbox|comments?-?(title|list|form|respond|cta)?|\
+         kommentare?|signin|nocomments|reply-?|hide-print|noprint|skip-?link|\
+         site-(header|footer)|page-(header|footer)|menu|navigation|toolbar|\
+         author-?(box|info|bio|card|meta|profile|details)|about-?(the-)?author|\
+         more-?(articles|stories|posts|reads|like-this|from)|\
+         subscribe(-?(form|box|cta))?|signup(-?form)?|abonniere?n?|\
+         post-?meta|entry-?meta|article-?meta)($|[ _-])",
     )
     .unwrap()
 });
 
 static SHARE_AD_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        "(?i)(^|[ _-])(share-?(this|to|on)?|social(-?(share|links))?|ad(s|vert(isement)?)?|sponsor(ed)?|promo|jp-(post-flair|relatedposts)|dpsp-content|popover|paywall|gdpr|cookie-(bar|notice|banner))($|[ _-])",
+        "(?i)(^|[ _-])(share-?(this|to|on|button|bar|box)?|social(-?(share|links|icons|bar))?|\
+         ad(s|vert(isement)?)?|sponsor(ed)?|promo|jp-(post-flair|relatedposts)|\
+         dpsp-content|popover|paywall|gdpr|cookie-(bar|notice|banner)|\
+         email-?(this|article|post|to-?a-?friend)|forward-?this|tell-?a-?friend|\
+         print-?(this|article|page)|bookmark|save-?(for-?later|article|post))($|[ _-])",
     )
     .unwrap()
 });
