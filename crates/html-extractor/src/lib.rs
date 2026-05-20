@@ -120,12 +120,15 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
             (fb_root.or(Some(idx)), q.max(0.15), true)
         } else if suspiciously_small {
             // (c): try the fallback chain and pick whichever produced more
-            // text-excluding-links content.
+            // text-excluding-links content. We accept the fallback if it
+            // found 1.5x or more — tighter ratios were too conservative on
+            // pages where Stage 3's pick was small but fallback's was only
+            // moderately bigger.
             let (fb_root, fb_q) = fallback::fallback(&tree, options);
             let fb_text = fb_root
                 .map(|i| tree.text_len_excluding_links(i))
                 .unwrap_or(0);
-            if fb_text > kept_text_len * 2 {
+            if fb_text * 2 > kept_text_len * 3 {
                 (fb_root, fb_q.max(0.2), true)
             } else {
                 (
