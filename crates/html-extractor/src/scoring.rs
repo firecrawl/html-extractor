@@ -118,7 +118,19 @@ pub(crate) fn profile_for(pt: PageType) -> ScoringProfile {
 
 static CONTENT_HINT_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        "(?i)(\\b|_|-)(article(-?(body|content|inner|main|text|wrap))?|post(-?(body|content|entry|text))?|entry(-?content)?|main(-?content)?|content(-?(body|main))?|story(-?body)?|page-?content|text-?content|body-?text|prose|markdown-?body)\\b",
+        "(?i)(\\b|_|-)(\
+         article(-?(body|content|container|inner|main|text|wrap))?|\
+         articlebody|articlecontent|\
+         post(-?(body|content|entry|text|bodycopy|inner))?|\
+         postentry|postcontent|postarea|\
+         entry(-?(content|inner|wrap))?|\
+         main(-?(content|column|article))?|\
+         content(-?(body|main|inner|wrap))?|content__body|content_main|contentbody|\
+         story(-?(body|content|text))?|\
+         page-?content|text-?content|body-?text|prose|markdown-?body|\
+         field-?body|art-?content|art-?postcontent|\
+         theme-?content|blog-?content|section-?content|single-?(content|post)|\
+         fulltext|wpb_text_column|prose-?content)\\b",
     )
     .unwrap()
 });
