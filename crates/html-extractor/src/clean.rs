@@ -221,8 +221,14 @@ static CHROME_RE: Lazy<Regex> = Lazy::new(|| {
          see-?also|read-?(also|more|further|next)|further-?(reading|articles)|\
          zobacz-?(takze|wi[ęe]cej)|czytaj-?(te[żz]|wi[ęe]cej)|\
          stay-?(up-?to-?date|informed|connected)|follow-?(us|on)|\
-         post-?(footer|share|info)|article-?(footer|share|info)|\
-         entry-?(footer|share|utility|tools))($|[ _-])",
+         post-?(footer|share|info)|article-?(footer|share|info|copyright)|\
+         entry-?(footer|share|utility|tools)|\
+         textwidget|widgettitle|widgetcontainer|widget-?content|widget-?header|\
+         morelinks|more-?links?|\
+         published|dt-published|posted-on|post-?date|article-?date|publish-?date|\
+         text-?(dimmed|muted)|\
+         box-?description|module-?box|asset-?box|info-?box|\
+         e-content|p-summary)($|[ _-])",
     )
     .unwrap()
 });
