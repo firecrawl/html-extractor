@@ -267,7 +267,10 @@ fn is_link_dense(tree: &Tree, idx: usize, favor_precision: bool) -> bool {
         }
         elem.tag != "_dropped_"
     });
-    let threshold = if favor_precision { 0.5 } else { 0.7 };
+    // Default threshold lowered from 0.7 to 0.6 to be more aggressive on
+    // related-stories rails and link-heavy navigation widgets that pass the
+    // chrome-class filter but still hold mostly links rather than prose.
+    let threshold = if favor_precision { 0.5 } else { 0.6 };
     let ratio = link_chars as f32 / total_chars as f32;
     if total_chars < 1000 {
         ratio > threshold
