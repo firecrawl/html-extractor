@@ -211,9 +211,18 @@ static CHROME_RE: Lazy<Regex> = Lazy::new(|| {
          kommentare?|signin|nocomments|reply-?|hide-print|noprint|skip-?link|\
          site-(header|footer)|page-(header|footer)|menu|navigation|toolbar|\
          author-?(box|info|bio|card|meta|profile|details)|about-?(the-)?author|\
-         more-?(articles|stories|posts|reads|like-this|from)|\
+         more-?(articles|stories|posts|reads|like-this|from|topic|on-this)|\
          subscribe(-?(form|box|cta))?|signup(-?form)?|abonniere?n?|\
-         post-?meta|entry-?meta|article-?meta)($|[ _-])",
+         post-?meta|entry-?meta|article-?meta|\
+         categor(y|ies|ien)|kategorien?|cats|\
+         pagination|page-?nav(igation)?|post-?nav(igation)?|\
+         prev(ious)?-?(post|page|article)?|next-?(post|page|article)|\
+         vorherige?s|nachste?r?|naechste?r?|\
+         see-?also|read-?(also|more|further|next)|further-?(reading|articles)|\
+         zobacz-?(takze|wi[ęe]cej)|czytaj-?(te[żz]|wi[ęe]cej)|\
+         stay-?(up-?to-?date|informed|connected)|follow-?(us|on)|\
+         post-?(footer|share|info)|article-?(footer|share|info)|\
+         entry-?(footer|share|utility|tools))($|[ _-])",
     )
     .unwrap()
 });
