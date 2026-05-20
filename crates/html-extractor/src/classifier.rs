@@ -107,6 +107,12 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
             "ul" | "ol" => tag_counts.list += 1,
             "li" => tag_counts.li += 1,
             "pre" | "code" => tag_counts.code += 1,
+            // A "long" paragraph has ≥100 chars of own text. Used to
+            // distinguish recipe / how-to / explainer pages (many <li>
+            // AND substantial prose) from pure listing pages.
+            "p" if elem.own_text.chars().count() >= 100 => {
+                tag_counts.long_p += 1;
+            }
             _ => {}
         }
         // Class signals — counted here, scored below with harmonic scaling.
@@ -142,7 +148,14 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
         scores[PageType::Article as usize] += 1.5;
     }
     if tag_counts.li > 20 && tag_counts.article == 0 {
-        scores[PageType::Listing as usize] += 2.0;
+        // Recipe / how-to / explainer pages have many <li> (ingredients,
+        // steps, feature lists) AND substantial prose. Only treat as Listing
+        // when prose is sparse; otherwise nudge toward Article.
+        if tag_counts.long_p >= 3 {
+            scores[PageType::Article as usize] += 1.5;
+        } else {
+            scores[PageType::Listing as usize] += 2.0;
+        }
     }
     if tag_counts.code > 5 || tag_counts.h2 > 8 {
         scores[PageType::Documentation as usize] += 1.0;
@@ -211,6 +224,7 @@ struct TagCounts {
     list: usize,
     li: usize,
     code: usize,
+    long_p: usize,
 }
 
 #[cfg(test)]
