@@ -62,13 +62,19 @@ fn main() {
     let md_escaped = json_escape(&r.markdown);
     let page_type_dbg = format!("{:?}", r.page_type);
     let pt_escaped = json_escape(&page_type_dbg);
+    let used_fallback = r.stats.as_ref().map(|s| s.used_fallback).unwrap_or(false);
+    let text_chars = r.stats.as_ref().map(|s| s.text_chars).unwrap_or(0);
+    let element_count = r.stats.as_ref().map(|s| s.element_count).unwrap_or(0);
     println!(
-        r#"{{"markdown":"{}","page_type":"{}","extraction_quality":{:.4},"duration_us":{},"raw_bytes":{}}}"#,
+        r#"{{"markdown":"{}","page_type":"{}","extraction_quality":{:.4},"duration_us":{},"raw_bytes":{},"used_fallback":{},"text_chars":{},"element_count":{}}}"#,
         md_escaped,
         pt_escaped,
         r.extraction_quality,
         median,
-        html.len()
+        html.len(),
+        used_fallback,
+        text_chars,
+        element_count,
     );
 }
 

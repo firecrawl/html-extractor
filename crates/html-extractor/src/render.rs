@@ -1,6 +1,6 @@
 //! Stage 5 — markdown renderer for the chosen subtree.
 
-use crate::clean::{is_chrome, is_share_or_ad, CleanedRoot};
+use crate::clean::CleanedRoot;
 use crate::tree::{Element, Tree};
 use crate::types::ExtractOptions;
 
@@ -51,11 +51,10 @@ fn render_node(tree: &Tree, idx: usize, ctx: &mut RenderCtx<'_>) {
     if ctx.skip.contains(&idx) {
         return;
     }
-    // Drop residual chrome that snuck into the kept subtree.
-    let needle = elem.class_id_lower();
-    if !needle.is_empty() && (is_chrome(&needle) || is_share_or_ad(&needle)) {
-        return;
-    }
+    // Chrome filtering is the job of post_clean (which fills `skip`); we used
+    // to re-apply is_chrome/is_share_or_ad here too, but that bypassed the
+    // dominant-subtree guard in post_clean and could drop the article body on
+    // pages whose body wrappers happen to match a chrome pattern.
 
     match elem.tag.as_str() {
         "h1" => render_heading(tree, idx, 1, ctx),

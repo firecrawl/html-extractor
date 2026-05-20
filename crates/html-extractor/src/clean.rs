@@ -142,6 +142,15 @@ fn post_clean_inner(
         }
         true
     });
+    // Dominant-subtree guard: never strip a descendant that holds the majority
+    // of the kept subtree's text. Class names like `single-post-content` or
+    // `entry-meta` can match the chrome regex even though they wrap the actual
+    // article body. Without this guard, post-clean can empty the output.
+    let root_text_len = tree.full_text(root).chars().count();
+    let dominant_threshold = (root_text_len / 2).max(1);
+    let is_dominant = |idx: usize| -> bool {
+        idx != root && tree.full_text(idx).chars().count() >= dominant_threshold
+    };
     // Iterate again with index access this time (so we can build `skip`).
     let mut stack = vec![root];
     while let Some(idx) = stack.pop() {
@@ -150,24 +159,24 @@ fn post_clean_inner(
             continue;
         }
         let needle = elem.class_id_lower();
-        if !needle.is_empty() && is_chrome(&needle) && idx != root {
+        if !needle.is_empty() && is_chrome(&needle) && idx != root && !is_dominant(idx) {
             skip.insert(idx);
             // don't descend into a dropped subtree
             continue;
         }
         // Drop inline ads / share buttons by class even when chrome regex
         // misses them.
-        if !needle.is_empty() && is_share_or_ad(&needle) && idx != root {
+        if !needle.is_empty() && is_share_or_ad(&needle) && idx != root && !is_dominant(idx) {
             skip.insert(idx);
             continue;
         }
-        // Link-density filter for div/list/p — see trafilatura
-        // `delete_by_link_density`.
+        // Link-density filter for div/list/p.
         if apply_link_density
             && !options.favor_recall
             && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
             && is_link_dense(tree, idx, options.favor_precision)
             && idx != root
+            && !is_dominant(idx)
         {
             skip.insert(idx);
             continue;
