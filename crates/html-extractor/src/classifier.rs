@@ -145,7 +145,11 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
         harmonic_score(class_counts[PageType::Documentation as usize], 0.7);
 
     if tag_counts.article >= 1 || tag_counts.main >= 1 {
-        scores[PageType::Article as usize] += 1.5;
+        // Bumped from 1.5 to 4.0 — `<article>`/`<main>` is a strong author-
+        // intent signal that needs to dominate forum-class noise from
+        // comment sections (a news page with 30 `<div class="comment-list">`
+        // entries shouldn't classify as Forum just because of the comments).
+        scores[PageType::Article as usize] += 4.0;
     }
     if tag_counts.li > 20 && tag_counts.article == 0 {
         // Recipe / how-to / explainer pages have many <li> (ingredients,
