@@ -156,7 +156,11 @@ fn post_clean_inner(
     //     the per-element guard, but together would erase the whole body.
     //     This budget catches that case.
     let root_text_len = tree.full_text(root).chars().count();
-    let dominant_threshold = (root_text_len / 2).max(1);
+    // Per-element dominant threshold lowered from 50% → 30% so subtrees that
+    // hold a substantial-but-not-majority share of the body (e.g. the article
+    // body wrapped in a hashed-class container, ~30-45% of root_text on pages
+    // with sidebars and footers) are also protected from chrome-class strips.
+    let dominant_threshold = ((root_text_len * 3) / 10).max(1);
     let strip_budget = (root_text_len * 6) / 10; // 60%
     let mut stripped_total: usize = 0;
     let mut stack = vec![root];
