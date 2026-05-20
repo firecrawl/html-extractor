@@ -68,15 +68,54 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
     let profile = scoring::profile_for(page_type);
     let (selected_root, score) = scoring::select_main(&tree, &profile, options);
 
-    // Stage 4: fallback if selected subtree is too small or absent.
+    // Stage 4: fallback if selected subtree is too small or absent. Three
+    // triggers:
+    //   (a) Stage 3 didn't pick anything (selected_root is None)
+    //   (b) The picked subtree's text is below the user-configured minimum
+    //   (c) The picked subtree is *suspiciously* small relative to the body
+    //       text — typically means the scored walk locked onto an intro
+    //       paragraph or product-nav and missed the real (link-dense, table-
+    //       layout, or component-grid) main content. We re-run with the
+    //       fallback chain and keep whichever found more text-excluding-links.
     let kept_text_len = selected_root
         .map(|idx| tree.text_len_excluding_links(idx))
         .unwrap_or(0);
     let min_len = options.min_extraction_length;
+    let body_text_len = if tree.body != usize::MAX {
+        tree.text_len_excluding_links(tree.body)
+    } else {
+        0
+    };
+    // Suspicious-pick threshold: chosen subtree has < 15% of body text-
+    // excluding-links AND body text is large enough (≥200 chars) that the
+    // disparity is meaningful. Catches a class of failure where the scored
+    // walk locks onto an intro paragraph or a small component-grid and misses
+    // the substantive main content elsewhere on the page (typically when the
+    // real content has high link density and the wider penalty regime drives
+    // its aggregate negative). 15% is empirical, tuned against a small real-
+    // world corpus.
+    let suspiciously_small = body_text_len >= 200 && kept_text_len * 100 < body_text_len * 15;
     let (final_root, quality, used_fallback) = if let Some(idx) = selected_root {
         if kept_text_len < min_len {
+            // (b): too short to be useful — fall through.
             let (fb_root, q) = fallback::fallback(&tree, options);
             (fb_root.or(Some(idx)), q.max(0.15), true)
+        } else if suspiciously_small {
+            // (c): try the fallback chain and pick whichever produced more
+            // text-excluding-links content.
+            let (fb_root, fb_q) = fallback::fallback(&tree, options);
+            let fb_text = fb_root
+                .map(|i| tree.text_len_excluding_links(i))
+                .unwrap_or(0);
+            if fb_text > kept_text_len * 2 {
+                (fb_root, fb_q.max(0.2), true)
+            } else {
+                (
+                    Some(idx),
+                    confidence_from_score(score, kept_text_len),
+                    false,
+                )
+            }
         } else {
             (
                 Some(idx),
