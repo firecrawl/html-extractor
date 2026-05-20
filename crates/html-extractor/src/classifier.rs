@@ -178,6 +178,36 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
             scores[PageType::Product as usize] += 0.5;
         }
     }
+    // schema.org @type — strong, author-declared intent. A page that
+    // explicitly says it's a Recipe / NewsArticle / Product should be
+    // classified accordingly even when the surrounding HTML has noise.
+    if let Some(sty) = metadata.schema_type.as_deref() {
+        let lt = sty.to_lowercase();
+        if lt.contains("article")
+            || lt.contains("blogposting")
+            || lt.contains("newsarticle")
+            || lt.contains("recipe")
+            || lt.contains("howto")
+            || lt.contains("review")
+            || lt.contains("report")
+        {
+            scores[PageType::Article as usize] += 5.0;
+        } else if lt.contains("product") || lt.contains("offer") {
+            scores[PageType::Product as usize] += 5.0;
+        } else if lt.contains("discussionforum") || lt.contains("qapage") || lt.contains("question")
+        {
+            scores[PageType::Forum as usize] += 5.0;
+        } else if lt.contains("itemlist")
+            || lt.contains("collectionpage")
+            || lt.contains("searchresults")
+        {
+            scores[PageType::Listing as usize] += 5.0;
+        } else if lt.contains("techarticle") || lt.contains("apireference") {
+            scores[PageType::Documentation as usize] += 5.0;
+        } else if lt.contains("contactpage") || lt.contains("aboutpage") || lt.contains("faqpage") {
+            scores[PageType::Service as usize] += 5.0;
+        }
+    }
 
     let total: f32 = scores.iter().sum();
     if total < 0.5 {

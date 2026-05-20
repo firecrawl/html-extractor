@@ -205,6 +205,21 @@ fn absorb_jsonld(v: &serde_json::Value, md: &mut Metadata) {
             if let Some(serde_json::Value::String(lang)) = map.get("inLanguage") {
                 set_if_empty(&mut md.language, lang);
             }
+            // schema.org @type — used by the page-type classifier. Can be a
+            // single string, an array of strings, or absent.
+            if md.schema_type.is_none() {
+                if let Some(t) = map.get("@type") {
+                    match t {
+                        serde_json::Value::String(s) => md.schema_type = Some(s.clone()),
+                        serde_json::Value::Array(items) => {
+                            if let Some(serde_json::Value::String(s)) = items.first() {
+                                md.schema_type = Some(s.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
         }
         _ => {}
     }

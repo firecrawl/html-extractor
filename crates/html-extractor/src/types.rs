@@ -161,6 +161,9 @@ pub struct Metadata {
     pub language: Option<String>,
     /// Comma-separated keywords / tags.
     pub keywords: Vec<String>,
+    /// schema.org `@type` from JSON-LD if present (e.g. `Recipe`,
+    /// `NewsArticle`, `Product`). Used internally by the page-type classifier.
+    pub schema_type: Option<String>,
 }
 
 /// Per-element decision (Phase 4 stub).
