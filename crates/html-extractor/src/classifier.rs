@@ -153,10 +153,12 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
     }
     if tag_counts.li > 20 && tag_counts.article == 0 {
         // Recipe / how-to / explainer pages have many <li> (ingredients,
-        // steps, feature lists) AND substantial prose. Only treat as Listing
-        // when prose is sparse; otherwise nudge toward Article.
+        // steps, feature lists) AND substantial prose. When prose is
+        // substantial, prefer Article with a strong bonus matching the
+        // <article>-tag bonus, so the Article scoring profile is used to
+        // pick the body rather than the Listing profile picking a list.
         if tag_counts.long_p >= 3 {
-            scores[PageType::Article as usize] += 1.5;
+            scores[PageType::Article as usize] += 4.0;
         } else {
             scores[PageType::Listing as usize] += 2.0;
         }
