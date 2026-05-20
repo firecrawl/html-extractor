@@ -94,7 +94,25 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
     // real content has high link density and the wider penalty regime drives
     // its aggregate negative). 15% is empirical, tuned against a small real-
     // world corpus.
-    let suspiciously_small = body_text_len >= 200 && kept_text_len * 100 < body_text_len * 15;
+    let suspiciously_small_excl_links =
+        body_text_len >= 200 && kept_text_len * 100 < body_text_len * 15;
+    // Link-heavy variant: when nearly all body text IS link text (table-
+    // layout listings of all-anchor rows), text_len_excluding_links is near-
+    // zero for both the body and the chosen subtree, so the excl-links ratio
+    // above can't detect the disparity. Use full-text on both sides with a
+    // tighter 5% threshold and a minimum 1000-char body to avoid false-
+    // positive triggers on small marketing pages.
+    let kept_full_text = selected_root
+        .map(|idx| tree.full_text(idx).chars().count())
+        .unwrap_or(0);
+    let body_full_text = if tree.body != usize::MAX {
+        tree.full_text(tree.body).chars().count()
+    } else {
+        0
+    };
+    let suspiciously_small_full =
+        body_full_text >= 1000 && kept_full_text * 100 < body_full_text * 5;
+    let suspiciously_small = suspiciously_small_excl_links || suspiciously_small_full;
     let (final_root, quality, used_fallback) = if let Some(idx) = selected_root {
         if kept_text_len < min_len {
             // (b): too short to be useful — fall through.
