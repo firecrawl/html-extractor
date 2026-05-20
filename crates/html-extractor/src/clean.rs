@@ -142,43 +142,50 @@ fn post_clean_inner(
         }
         true
     });
-    // Dominant-subtree guard: never strip a descendant that holds the majority
-    // of the kept subtree's text. Class names like `single-post-content` or
-    // `entry-meta` can match the chrome regex even though they wrap the actual
-    // article body. Without this guard, post-clean can empty the output.
+    // Two guards against over-stripping the kept subtree:
+    //
+    //   * Per-element dominant guard: never strip a single descendant that
+    //     holds ≥50% of the kept subtree's text. Class names like
+    //     `single-post-content` or `entry-meta` can match chrome even though
+    //     they wrap the actual body.
+    //
+    //   * Cumulative budget: stop stripping after the running total of
+    //     stripped text would exceed 60% of the kept subtree. Some site
+    //     templates (e.g. Elementor's `class="elementor-widget"` on every
+    //     content block) have many small chrome-class siblings that each pass
+    //     the per-element guard, but together would erase the whole body.
+    //     This budget catches that case.
     let root_text_len = tree.full_text(root).chars().count();
     let dominant_threshold = (root_text_len / 2).max(1);
-    let is_dominant = |idx: usize| -> bool {
-        idx != root && tree.full_text(idx).chars().count() >= dominant_threshold
-    };
-    // Iterate again with index access this time (so we can build `skip`).
+    let strip_budget = (root_text_len * 6) / 10; // 60%
+    let mut stripped_total: usize = 0;
     let mut stack = vec![root];
     while let Some(idx) = stack.pop() {
         let elem = tree.get(idx);
         if elem.tag == "_dropped_" {
             continue;
         }
+        let idx_text = tree.full_text(idx).chars().count();
+        let is_dominant = idx != root && idx_text >= dominant_threshold;
+        let would_exceed_budget =
+            idx != root && idx_text > 0 && stripped_total + idx_text > strip_budget;
+
         let needle = elem.class_id_lower();
-        if !needle.is_empty() && is_chrome(&needle) && idx != root && !is_dominant(idx) {
-            skip.insert(idx);
-            // don't descend into a dropped subtree
-            continue;
-        }
-        // Drop inline ads / share buttons by class even when chrome regex
-        // misses them.
-        if !needle.is_empty() && is_share_or_ad(&needle) && idx != root && !is_dominant(idx) {
-            skip.insert(idx);
-            continue;
-        }
-        // Link-density filter for div/list/p.
-        if apply_link_density
+        let chrome_hit = !needle.is_empty() && is_chrome(&needle);
+        let share_hit = !needle.is_empty() && is_share_or_ad(&needle);
+        let link_hit = apply_link_density
             && !options.favor_recall
             && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
-            && is_link_dense(tree, idx, options.favor_precision)
+            && is_link_dense(tree, idx, options.favor_precision);
+
+        if (chrome_hit || share_hit || link_hit)
             && idx != root
-            && !is_dominant(idx)
+            && !is_dominant
+            && !would_exceed_budget
         {
             skip.insert(idx);
+            stripped_total += idx_text;
+            // don't descend into a dropped subtree
             continue;
         }
         for &c in &elem.children {
