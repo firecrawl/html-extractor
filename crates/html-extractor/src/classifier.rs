@@ -13,8 +13,12 @@ static URL_ARTICLE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)/(article|news|story|stories|blog|posts?|opinion|features?|columns?)(/|$)")
         .unwrap()
 });
+// NOTE: `topic` was previously here but it's ambiguous — many docs sites use
+// `/topics/` as a section path (e.g. Django's `/en/5.0/topics/db/queries/`),
+// so matching it as a forum signal mis-classifies docs as forums. Threads,
+// discussions, and questions are unambiguous forum signals.
 static URL_FORUM: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)/(forum|thread|discussion|topic|question)s?(/|$)").unwrap());
+    Lazy::new(|| Regex::new(r"(?i)/(forum|thread|discussion|question)s?(/|$)").unwrap());
 static URL_PRODUCT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)/(product|item|sku|p|dp|gp/product)/").unwrap());
 static URL_LISTING: Lazy<Regex> = Lazy::new(|| {
@@ -50,26 +54,38 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
     // Tally signals across sources. Each match contributes a small score; the
     // page type with the highest score wins. Confidence is `winner_score /
     // total_score`, floor 0.1.
+    //
+    // URL signals weighted at 5.0 — strong because URL patterns like /pricing,
+    // /docs, /products are deliberate routing decisions by the site author
+    // and historically reliable. They need to be strong enough to overpower
+    // BOTH (a) repeated class hits and (b) structural tag-count bonuses (e.g.
+    // a /pricing page with many "what's included" <li> bullets shouldn't get
+    // pulled into Listing by the >20-li bonus). Class signals are accumulated
+    // per category and then applied with harmonic (sub-linear) scaling so a
+    // product-card grid on a /pricing page (e.g. Stripe's product nav) can't
+    // drown out the URL_SERVICE signal: 1 match → +1.0, 2 → +1.5, 5 → +2.28,
+    // 20 → +3.6.
     let mut scores = [0.0f32; 8];
+    let mut class_counts = [0u32; 8];
 
     if let Some(u) = url {
         if URL_ARTICLE.is_match(u) {
-            scores[PageType::Article as usize] += 3.0;
+            scores[PageType::Article as usize] += 5.0;
         }
         if URL_FORUM.is_match(u) {
-            scores[PageType::Forum as usize] += 3.0;
+            scores[PageType::Forum as usize] += 5.0;
         }
         if URL_PRODUCT.is_match(u) {
-            scores[PageType::Product as usize] += 3.0;
+            scores[PageType::Product as usize] += 5.0;
         }
         if URL_LISTING.is_match(u) {
-            scores[PageType::Listing as usize] += 3.0;
+            scores[PageType::Listing as usize] += 5.0;
         }
         if URL_DOCS.is_match(u) {
-            scores[PageType::Documentation as usize] += 3.0;
+            scores[PageType::Documentation as usize] += 5.0;
         }
         if URL_SERVICE.is_match(u) {
-            scores[PageType::Service as usize] += 3.0;
+            scores[PageType::Service as usize] += 5.0;
         }
     }
 
@@ -93,24 +109,34 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
             "pre" | "code" => tag_counts.code += 1,
             _ => {}
         }
-        // Class signals
+        // Class signals — counted here, scored below with harmonic scaling.
         let needle = elem.class_id_lower();
         if !needle.is_empty() {
             if CLASS_FORUM.is_match(&needle) {
-                scores[PageType::Forum as usize] += 1.0;
+                class_counts[PageType::Forum as usize] += 1;
             }
             if CLASS_PRODUCT.is_match(&needle) {
-                scores[PageType::Product as usize] += 1.0;
+                class_counts[PageType::Product as usize] += 1;
             }
             if CLASS_LISTING.is_match(&needle) {
-                scores[PageType::Listing as usize] += 0.7;
+                class_counts[PageType::Listing as usize] += 1;
             }
             if CLASS_DOCS.is_match(&needle) {
-                scores[PageType::Documentation as usize] += 0.7;
+                class_counts[PageType::Documentation as usize] += 1;
             }
         }
         true
     });
+
+    // Apply harmonic-scaled class scores. Per-category weight matches the
+    // previous code (CLASS_LISTING/DOCS at 0.7, others at 1.0).
+    scores[PageType::Forum as usize] += harmonic_score(class_counts[PageType::Forum as usize], 1.0);
+    scores[PageType::Product as usize] +=
+        harmonic_score(class_counts[PageType::Product as usize], 1.0);
+    scores[PageType::Listing as usize] +=
+        harmonic_score(class_counts[PageType::Listing as usize], 0.7);
+    scores[PageType::Documentation as usize] +=
+        harmonic_score(class_counts[PageType::Documentation as usize], 0.7);
 
     if tag_counts.article >= 1 || tag_counts.main >= 1 {
         scores[PageType::Article as usize] += 1.5;
@@ -160,6 +186,18 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
     } else {
         (pt, conf)
     }
+}
+
+/// Sub-linear (harmonic) scaling for repeated class hits: 1.0, 1.5, 1.83, 2.08,
+/// ... The first match is full-weight evidence; each repeat adds less. Stops
+/// repeated component-class hits (e.g. a 20-card product grid) from drowning
+/// stronger signals like URL patterns.
+fn harmonic_score(count: u32, weight: f32) -> f32 {
+    if count == 0 {
+        return 0.0;
+    }
+    let h: f32 = (1..=count).map(|n| 1.0 / n as f32).sum();
+    h * weight
 }
 
 #[derive(Default)]
@@ -224,5 +262,33 @@ mod tests {
         html.push_str("</ul></body></html>");
         let (pt, _) = classify_html(&html, None);
         assert_eq!(pt, PageType::Listing);
+    }
+
+    #[test]
+    fn service_url_beats_repeated_product_class_noise() {
+        // Stripe-pricing-style failure mode: URL /pricing + many product-card
+        // nodes from a product-nav grid. Pre-fix, 20× product class hits
+        // accumulated to +20.0 and overwhelmed the URL_SERVICE +3.0 signal;
+        // page classified as Product (wrong) → wrong scoring profile → main-
+        // content extraction picked the product nav instead of the prices.
+        let mut html = String::from("<html><body>");
+        for _ in 0..20 {
+            html.push_str(r#"<div class="product-detail">Payments product</div>"#);
+        }
+        html.push_str("</body></html>");
+        let (pt, _) = classify_html(&html, Some("https://example.com/pricing"));
+        assert_eq!(pt, PageType::Service);
+    }
+
+    #[test]
+    fn harmonic_class_scaling() {
+        // 1 hit = full weight, 2 hits = 1.5×, decay thereafter.
+        assert!((harmonic_score(0, 1.0) - 0.0).abs() < 1e-6);
+        assert!((harmonic_score(1, 1.0) - 1.0).abs() < 1e-6);
+        assert!((harmonic_score(2, 1.0) - 1.5).abs() < 1e-6);
+        // 20 hits with weight 1.0 lands around 3.6 — stays below the
+        // URL_*-signal weight of 4.0 so URL can still win when present.
+        let twenty = harmonic_score(20, 1.0);
+        assert!(twenty > 3.5 && twenty < 4.0);
     }
 }
