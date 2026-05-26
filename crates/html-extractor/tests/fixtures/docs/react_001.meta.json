@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://react.dev/reference/react",
   "title": "useEffect hook",
   "min_quality": 0.1,
   "must_not_contain": [

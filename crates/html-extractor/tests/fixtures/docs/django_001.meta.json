@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://www.djangoproject.com/docs/topics/db/queries/",
   "title": "Querysets",
   "min_quality": 0.1,
   "must_not_contain": [
