@@ -25,6 +25,10 @@ pub struct ExtractOptions {
     pub include_images: Option<bool>,
     pub include_metadata: Option<bool>,
     pub min_extraction_length: Option<u32>,
+    /// Reject inputs larger than this many bytes; returns an empty result with
+    /// `errorReason = "input_too_large"`. Default: no limit. Recommended for
+    /// production: cap at the 99.9th-percentile page size on your traffic.
+    pub max_input_size: Option<u32>,
 }
 
 #[napi(object)]
@@ -207,10 +211,34 @@ fn strip_markdown(md: &str) -> String {
     out.trim().to_string()
 }
 
+/// Returns a "too large" empty result if `max_input_size` is set and exceeded.
+/// Returning a result (rather than throwing) keeps the JS contract consistent
+/// with how `html_extractor::extract` already reports empty / unparseable input.
+fn too_large_result(html_len: usize, limit: usize) -> ExtractResult {
+    ExtractResult {
+        markdown: String::new(),
+        text: None,
+        page_type: "other".to_string(),
+        extraction_quality: 0.0,
+        language: None,
+        metadata: None,
+        stats: None,
+        error_reason: Some(format!(
+            "input_too_large: {html_len} bytes exceeds max_input_size {limit}"
+        )),
+    }
+}
+
 /// Synchronous variant. Prefer `extract` (async) for large inputs.
 #[napi(js_name = "extractSync")]
 pub fn extract_sync(html: String, options: Option<ExtractOptions>) -> Result<ExtractResult> {
     let opts_in = options.unwrap_or_default();
+    if let Some(limit) = opts_in.max_input_size {
+        let limit = limit as usize;
+        if html.len() > limit {
+            return Ok(too_large_result(html.len(), limit));
+        }
+    }
     let want_text = opts_in.output_text.unwrap_or(false);
     let opts = map_options(&opts_in);
     match html_extractor::extract(&html, &opts) {
@@ -223,20 +251,31 @@ pub struct ExtractTask {
     pub(crate) html: String,
     pub(crate) opts: html_extractor::ExtractOptions,
     pub(crate) want_text: bool,
+    /// Pre-resolved failure result (e.g. input exceeded max_input_size).
+    /// When set, `compute` short-circuits and `resolve` returns this.
+    pub(crate) preflight_failure: Option<ExtractResult>,
 }
 
 #[napi]
 impl Task for ExtractTask {
-    type Output = html_extractor::ExtractResult;
+    type Output = Option<html_extractor::ExtractResult>;
     type JsValue = ExtractResult;
 
     fn compute(&mut self) -> Result<Self::Output> {
+        if self.preflight_failure.is_some() {
+            return Ok(None);
+        }
         html_extractor::extract(&self.html, &self.opts)
+            .map(Some)
             .map_err(|e| Error::from_reason(e.to_string()))
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
-        Ok(map_result(output, self.want_text))
+        if let Some(fail) = self.preflight_failure.take() {
+            return Ok(fail);
+        }
+        let r = output.expect("compute returned None without a preflight_failure set");
+        Ok(map_result(r, self.want_text))
     }
 }
 
@@ -246,11 +285,16 @@ impl Task for ExtractTask {
 pub fn extract_async(html: String, options: Option<ExtractOptions>) -> AsyncTask<ExtractTask> {
     let opts_in = options.unwrap_or_default();
     let want_text = opts_in.output_text.unwrap_or(false);
+    let preflight_failure = opts_in.max_input_size.and_then(|limit| {
+        let limit = limit as usize;
+        (html.len() > limit).then(|| too_large_result(html.len(), limit))
+    });
     let opts = map_options(&opts_in);
     AsyncTask::new(ExtractTask {
         html,
         opts,
         want_text,
+        preflight_failure,
     })
 }
 
