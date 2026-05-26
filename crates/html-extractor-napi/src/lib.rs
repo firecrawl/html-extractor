@@ -178,11 +178,17 @@ fn strip_markdown(md: &str) -> String {
             match c {
                 '*' | '_' | '`' | '~' => {}
                 '[' => {
+                    // Capture link/image text up to the matching ']'. Inner
+                    // brackets are kept verbatim (and balanced) so nested
+                    // constructs don't leave a stray bracket behind.
                     let mut depth = 1;
                     let mut text = String::new();
                     for cc in chars.by_ref() {
                         match cc {
-                            '[' => depth += 1,
+                            '[' => {
+                                depth += 1;
+                                text.push(cc);
+                            }
                             ']' => {
                                 depth -= 1;
                                 if depth == 0 {
@@ -302,4 +308,44 @@ pub fn extract_async(html: String, options: Option<ExtractOptions>) -> AsyncTask
 #[napi]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_markdown;
+
+    #[test]
+    fn simple_link_keeps_text_drops_url() {
+        assert_eq!(
+            strip_markdown("see [the docs](https://x.io)"),
+            "see the docs"
+        );
+    }
+
+    #[test]
+    fn nested_brackets_stay_balanced() {
+        // Regression: the inner '[' used to be dropped while the inner ']'
+        // was kept, leaving a stray ']' in the output.
+        assert_eq!(
+            strip_markdown("[foo [bar] baz](https://x.io)"),
+            "foo [bar] baz"
+        );
+    }
+
+    #[test]
+    fn reference_style_link_does_not_leak_brackets() {
+        // [text][ref] — neither the text nor the ref label should leave an
+        // unbalanced bracket behind.
+        let out = strip_markdown("[text][ref]");
+        assert!(!out.contains(']'), "unexpected stray bracket: {out:?}");
+        assert!(!out.contains('['), "unexpected stray bracket: {out:?}");
+    }
+
+    #[test]
+    fn emphasis_and_code_markers_are_removed() {
+        assert_eq!(
+            strip_markdown("**bold** and `code` and _em_"),
+            "bold and code and em"
+        );
+    }
 }
