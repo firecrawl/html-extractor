@@ -28,9 +28,10 @@ pub(crate) fn fallback(tree: &Tree, _options: &ExtractOptions) -> (Option<usize>
 }
 
 fn justext_pick(tree: &Tree) -> Option<usize> {
-    // Per-paragraph classification.
-    let mut good_parents: std::collections::HashMap<usize, usize> =
-        std::collections::HashMap::new();
+    // Per-paragraph classification. BTreeMap keeps iteration order stable
+    // across runs (HashMap's randomized seed produced flaky output on ties).
+    let mut good_parents: std::collections::BTreeMap<usize, usize> =
+        std::collections::BTreeMap::new();
     tree.walk_pre(tree.body, |idx| {
         let elem = tree.get(idx);
         if elem.tag == "_dropped_" {
@@ -77,14 +78,16 @@ fn justext_pick(tree: &Tree) -> Option<usize> {
         }
         true
     });
+    // On ties, prefer the lower idx (more ancestral / earlier in document).
     good_parents
         .into_iter()
-        .max_by_key(|&(_, n)| n)
+        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0)))
         .map(|(idx, _)| idx)
 }
 
 fn readability_pick(tree: &Tree) -> Option<usize> {
-    let mut scores: std::collections::HashMap<usize, f32> = std::collections::HashMap::new();
+    // BTreeMap for stable iteration; see justext_pick.
+    let mut scores: std::collections::BTreeMap<usize, f32> = std::collections::BTreeMap::new();
     tree.walk_pre(tree.body, |idx| {
         let elem = tree.get(idx);
         if elem.tag == "_dropped_" {
@@ -112,9 +115,15 @@ fn readability_pick(tree: &Tree) -> Option<usize> {
         }
         true
     });
+    // partial_cmp is safe here: scores are sums of finite positives, never NaN.
+    // On ties, prefer the lower idx (more ancestral / earlier in document).
     scores
         .into_iter()
-        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .max_by(|a, b| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| b.0.cmp(&a.0))
+        })
         .map(|(idx, _)| idx)
 }
 
@@ -165,4 +174,37 @@ fn has_stop_words(text: &str) -> bool {
         .take(2)
         .count()
         >= 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+
+    #[test]
+    fn justext_pick_is_stable_on_ties() {
+        // Two sibling divs with identical qualifying paragraphs tie in
+        // good_parents. The lower-idx (earlier-in-document) ancestor must
+        // win and the result must be stable across repeated calls.
+        let html = "<html><body>\
+            <div id=\"a\"><p>The quick brown fox jumps over the lazy dog and runs to the river. The quick brown fox jumps over the lazy dog and runs to the river.</p></div>\
+            <div id=\"b\"><p>The quick brown fox jumps over the lazy dog and runs to the river. The quick brown fox jumps over the lazy dog and runs to the river.</p></div>\
+        </body></html>";
+        let tree = parse(html).unwrap();
+
+        let first = justext_pick(&tree).expect("justext_pick should find a parent");
+        for _ in 0..50 {
+            assert_eq!(justext_pick(&tree), Some(first), "justext_pick output drifted");
+        }
+
+        let mut divs: Vec<usize> = Vec::new();
+        tree.walk_pre(tree.body, |idx| {
+            if tree.get(idx).tag == "div" {
+                divs.push(idx);
+            }
+            true
+        });
+        assert!(divs.len() >= 2, "expected at least two <div> nodes");
+        assert_eq!(first, divs[0], "expected lower-idx div to win on tie");
+    }
 }
