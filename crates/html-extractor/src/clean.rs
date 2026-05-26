@@ -131,17 +131,10 @@ fn post_clean_inner(
     // descendant indices that the renderer will respect. This keeps `tree`
     // shareable with other passes (e.g. for fallback retries).
     let mut skip: std::collections::HashSet<usize> = std::collections::HashSet::new();
-    tree.walk_subtree_text(root, &mut |elem| {
-        // Cheap chrome match by class/id.
-        let needle = elem.class_id_lower();
-        if !needle.is_empty() && is_chrome(&needle) {
-            // Defer the actual drop decision until we look at the descendant
-            // count, since some "header" classes wrap whole sections that
-            // include real content.
-            return true;
-        }
-        true
-    });
+    // Subtree text/link-char metrics for the whole selection, computed in one
+    // post-order pass. Looking these up is O(1); the previous code called
+    // `full_text` per node, which re-walked each subtree (O(N²)).
+    let metrics = tree.subtree_text_metrics(root);
     // Two guards against over-stripping the kept subtree:
     //
     //   * Per-element dominant guard: never strip a single descendant that
@@ -155,7 +148,7 @@ fn post_clean_inner(
     //     content block) have many small chrome-class siblings that each pass
     //     the per-element guard, but together would erase the whole body.
     //     This budget catches that case.
-    let root_text_len = tree.full_text(root).chars().count();
+    let root_text_len = metrics.chars[root];
     // Per-element dominant threshold lowered from 50% → 30% so subtrees that
     // hold a substantial-but-not-majority share of the body (e.g. the article
     // body wrapped in a hashed-class container, ~30-45% of root_text on pages
@@ -169,7 +162,7 @@ fn post_clean_inner(
         if elem.tag == "_dropped_" {
             continue;
         }
-        let idx_text = tree.full_text(idx).chars().count();
+        let idx_text = metrics.chars[idx];
         let is_dominant = idx != root && idx_text >= dominant_threshold;
         let would_exceed_budget =
             idx != root && idx_text > 0 && stripped_total + idx_text > strip_budget;
@@ -180,7 +173,7 @@ fn post_clean_inner(
         let link_hit = apply_link_density
             && !options.favor_recall
             && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
-            && is_link_dense(tree, idx, options.favor_precision);
+            && is_link_dense(idx_text, metrics.link_chars[idx], options.favor_precision);
 
         if (chrome_hit || share_hit || link_hit)
             && idx != root
@@ -257,20 +250,13 @@ pub(crate) fn is_share_or_ad(class_id: &str) -> bool {
 }
 
 /// Per-element link-density check. Mirrors trafilatura's
-/// `link_density_test` semantics, simplified for our scoring units.
-fn is_link_dense(tree: &Tree, idx: usize, favor_precision: bool) -> bool {
-    let total = tree.full_text(idx);
-    let total_chars = total.chars().count();
+/// `link_density_test` semantics, simplified for our scoring units. Takes
+/// precomputed subtree totals (see [`Tree::subtree_text_metrics`]) so callers
+/// don't re-walk the subtree per node.
+fn is_link_dense(total_chars: usize, link_chars: usize, favor_precision: bool) -> bool {
     if total_chars < 30 {
         return false;
     }
-    let mut link_chars = 0usize;
-    tree.walk_subtree_text(idx, &mut |elem| {
-        if elem.tag == "a" {
-            link_chars += elem.own_text.chars().count();
-        }
-        elem.tag != "_dropped_"
-    });
     // Default threshold lowered from 0.7 to 0.6 to be more aggressive on
     // related-stories rails and link-heavy navigation widgets that pass the
     // chrome-class filter but still hold mostly links rather than prose.

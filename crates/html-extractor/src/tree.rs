@@ -50,6 +50,15 @@ impl Element {
     }
 }
 
+/// Per-node text metrics for a subtree, indexed by node id. See
+/// [`Tree::subtree_text_metrics`].
+pub(crate) struct SubtreeTextMetrics {
+    /// `full_text(idx).chars().count()` for each node.
+    pub chars: Vec<usize>,
+    /// Total `<a>` own-text chars in each node's subtree.
+    pub link_chars: Vec<usize>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Tree {
     pub nodes: Vec<Element>,
@@ -155,6 +164,61 @@ impl Tree {
         }
     }
 
+    /// One post-order pass computing, for every node in `root`'s subtree, the
+    /// exact `full_text(idx).chars().count()` and the total `<a>` own-text
+    /// chars in the subtree. Replaces per-node `full_text` calls in post-clean,
+    /// which were O(N²) (each node re-walked its whole subtree). Indices
+    /// outside `root`'s subtree are left at 0.
+    ///
+    /// The char count is composed with the same separator rule as
+    /// [`full_text`](Self::full_text): a single space is inserted before a
+    /// non-empty text run when the running buffer is non-empty and does not
+    /// already end in whitespace. Dropped subtrees contribute nothing.
+    pub fn subtree_text_metrics(&self, root: usize) -> SubtreeTextMetrics {
+        #[derive(Clone, Copy, Default)]
+        struct Agg {
+            chars: usize,
+            link_chars: usize,
+            any: bool,
+            last_ends_ws: bool,
+        }
+        let mut agg = vec![Agg::default(); self.nodes.len()];
+        self.walk_post(root, |idx| {
+            let node = &self.nodes[idx];
+            if node.tag == "_dropped_" {
+                agg[idx] = Agg::default();
+                return;
+            }
+            let mut a = Agg::default();
+            if node.tag == "a" {
+                a.link_chars = node.own_text.chars().count();
+            }
+            // own_text comes first in full_text's pre-order traversal.
+            if !node.own_text.is_empty() {
+                a.chars = node.own_text.chars().count();
+                a.any = true;
+                a.last_ends_ws = node.own_text.ends_with(char::is_whitespace);
+            }
+            for &c in &node.children {
+                let ca = agg[c];
+                a.link_chars += ca.link_chars;
+                if ca.any {
+                    if a.any && !a.last_ends_ws {
+                        a.chars += 1; // separator space
+                    }
+                    a.chars += ca.chars;
+                    a.any = true;
+                    a.last_ends_ws = ca.last_ends_ws;
+                }
+            }
+            agg[idx] = a;
+        });
+        SubtreeTextMetrics {
+            chars: agg.iter().map(|a| a.chars).collect(),
+            link_chars: agg.iter().map(|a| a.link_chars).collect(),
+        }
+    }
+
     /// Concatenated descendant text (no link exclusion). Used for link-density
     /// math and minimum-content checks.
     pub fn full_text(&self, idx: usize) -> String {
@@ -184,5 +248,49 @@ impl Tree {
             }
         });
         n.saturating_sub(1) // don't count self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::parse;
+
+    fn link_chars_via_walk(tree: &crate::tree::Tree, idx: usize) -> usize {
+        let mut n = 0usize;
+        tree.walk_subtree_text(idx, &mut |elem| {
+            if elem.tag == "a" {
+                n += elem.own_text.chars().count();
+            }
+            elem.tag != "_dropped_"
+        });
+        n
+    }
+
+    #[test]
+    fn subtree_text_metrics_match_full_text_for_every_node() {
+        // Mix of nested wrappers, sibling text runs, links, and whitespace
+        // boundaries — the cases where the separator rule matters.
+        let html = "<html><body>\
+            <div id=\"a\">Hello <span>world</span> and <a href=\"/x\">a link</a> here.\
+                <p>Second paragraph with <a href=\"/y\">another link</a> inside it.</p>\
+            </div>\
+            <ul><li>one</li><li>two</li><li><a href=\"/z\">three</a></li></ul>\
+            </body></html>";
+        let tree = parse(html).unwrap();
+        let metrics = tree.subtree_text_metrics(tree.root);
+        for idx in 0..tree.len() {
+            assert_eq!(
+                metrics.chars[idx],
+                tree.full_text(idx).chars().count(),
+                "chars mismatch at node {idx} (tag {:?})",
+                tree.get(idx).tag
+            );
+            assert_eq!(
+                metrics.link_chars[idx],
+                link_chars_via_walk(&tree, idx),
+                "link_chars mismatch at node {idx} (tag {:?})",
+                tree.get(idx).tag
+            );
+        }
     }
 }
