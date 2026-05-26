@@ -17,8 +17,13 @@ static URL_ARTICLE: Lazy<Regex> = Lazy::new(|| {
 // `/topics/` as a section path (e.g. Django's `/en/5.0/topics/db/queries/`),
 // so matching it as a forum signal mis-classifies docs as forums. Threads,
 // discussions, and questions are unambiguous forum signals.
-static URL_FORUM: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)/(forum|thread|discussion|question)s?(/|$)").unwrap());
+// Forum / discussion URL shapes. Beyond the generic /forum|/thread|/discussion
+// |/question paths, cover the common real-world ones the generic patterns miss:
+// reddit (`/comments/`), phpBB (`/viewtopic`), and Discourse (`/t/<slug>/<id>`).
+static URL_FORUM: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)(/(forum|thread|discussion|question|comment)s?(/|$)|/viewtopic|/t/[^/]+/\d)")
+        .unwrap()
+});
 static URL_PRODUCT: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)/(product|item|sku|p|dp|gp/product)/").unwrap());
 static URL_LISTING: Lazy<Regex> = Lazy::new(|| {
@@ -47,6 +52,15 @@ static CLASS_LISTING: Lazy<Regex> = Lazy::new(|| {
 });
 static CLASS_DOCS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)(\b|_|-)(docs?(-content|-body)?|api-reference|sphinx)\b").unwrap()
+});
+// Homepage / aggregator regions: hero banners, content rails, feature/teaser
+// grids. Several of these on one page (and no single <article> body) marks a
+// collection / landing page rather than a single piece of content.
+static CLASS_COLLECTION: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)(\b|_|-)(hero|[a-z]+-rail|features?|card-grid|teaser|landing|section-grid|promo-grid|home-(grid|hero|feed)|content-feed)\b",
+    )
+    .unwrap()
 });
 
 /// Classify a parsed document.
@@ -130,6 +144,9 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
             if CLASS_DOCS.is_match(&needle) {
                 class_counts[PageType::Documentation as usize] += 1;
             }
+            if CLASS_COLLECTION.is_match(&needle) {
+                class_counts[PageType::Collection as usize] += 1;
+            }
         }
         true
     });
@@ -143,6 +160,23 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
         harmonic_score(class_counts[PageType::Listing as usize], 0.7);
     scores[PageType::Documentation as usize] +=
         harmonic_score(class_counts[PageType::Documentation as usize], 0.7);
+    scores[PageType::Collection as usize] +=
+        harmonic_score(class_counts[PageType::Collection as usize], 1.0);
+
+    // Several repeated post / comment / message items make a discussion thread,
+    // not an article — even when wrapped in <main> or a single <article>.
+    // Require ≥3 forum-class hits so a lone comment-list on a news article
+    // (1 hit) doesn't trip this and overpower the +4.0 <article> bonus below.
+    if class_counts[PageType::Forum as usize] >= 3 {
+        scores[PageType::Forum as usize] += 3.0;
+    }
+    // Multiple homepage/aggregator regions (hero + rails + feature grids) with
+    // no single <article> body mark a collection / landing page. The ≥2 hit
+    // floor keeps an incidental "features" block on a product page from
+    // tipping it into Collection.
+    if class_counts[PageType::Collection as usize] >= 2 && tag_counts.article == 0 {
+        scores[PageType::Collection as usize] += 3.0;
+    }
 
     if tag_counts.article >= 1 || tag_counts.main >= 1 {
         // Bumped from 1.5 to 4.0 — `<article>`/`<main>` is a strong author-
@@ -328,6 +362,63 @@ mod tests {
         html.push_str("</body></html>");
         let (pt, _) = classify_html(&html, Some("https://example.com/pricing"));
         assert_eq!(pt, PageType::Service);
+    }
+
+    #[test]
+    fn forum_detected_by_repeated_post_items() {
+        // A discussion thread: one thread wrapper + several post items, wrapped
+        // in <main> with an <article> tag. The repeated post-class items must
+        // win over the +4.0 <article>/<main> bonus even without a URL.
+        let mut html = String::from("<html><body><main><article><div class=\"thread-content\">");
+        for i in 0..4 {
+            html.push_str(&format!(
+                "<div class=\"post-item\"><p>Reply {i} with enough words to read as real content.</p></div>"
+            ));
+        }
+        html.push_str("</div></article></main></body></html>");
+        let (pt, _) = classify_html(&html, None);
+        assert_eq!(pt, PageType::Forum);
+    }
+
+    #[test]
+    fn article_with_comment_list_stays_article() {
+        // Regression guard: a news article with a single comment-list container
+        // (1 forum-class hit) must NOT tip into Forum.
+        let html = "<html><body><article><h1>Big News</h1>\
+            <p>A long article body with plenty of prose to anchor this as an article \
+            and not a discussion thread of any kind whatsoever.</p>\
+            <div class=\"comment-list\"><p>nice</p><p>agreed</p></div>\
+            </article></body></html>";
+        let (pt, _) = classify_html(html, None);
+        assert_eq!(pt, PageType::Article);
+    }
+
+    #[test]
+    fn collection_detected_by_homepage_regions() {
+        // Homepage / landing page: hero + content rail + feature grid, wrapped
+        // in <main> with no single <article> body and no URL.
+        let html = "<html><body><main>\
+            <section class=\"hero\"><h1>Welcome</h1></section>\
+            <section class=\"news-rail\"><h2>Latest</h2></section>\
+            <section class=\"features\"><h2>Why us</h2></section>\
+            </main></body></html>";
+        let (pt, _) = classify_html(html, None);
+        assert_eq!(pt, PageType::Collection);
+    }
+
+    #[test]
+    fn forum_url_patterns_classify_as_forum() {
+        // The real-world forum URL shapes the generic patterns used to miss.
+        let html = "<html><body><main><p>some discussion content that is long \
+            enough to anchor the page as real content here.</p></main></body></html>";
+        for url in [
+            "https://www.reddit.com/r/rust/comments/abc123/best_way/",
+            "https://board.example.com/viewtopic.php?t=42",
+            "https://forum.example.com/t/some-topic/12345",
+        ] {
+            let (pt, _) = classify_html(html, Some(url));
+            assert_eq!(pt, PageType::Forum, "url {url} should classify as Forum");
+        }
     }
 
     #[test]
