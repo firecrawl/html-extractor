@@ -194,7 +194,11 @@ mod tests {
 
         let first = justext_pick(&tree).expect("justext_pick should find a parent");
         for _ in 0..50 {
-            assert_eq!(justext_pick(&tree), Some(first), "justext_pick output drifted");
+            assert_eq!(
+                justext_pick(&tree),
+                Some(first),
+                "justext_pick output drifted"
+            );
         }
 
         let mut divs: Vec<usize> = Vec::new();
