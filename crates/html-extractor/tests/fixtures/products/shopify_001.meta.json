@@ -1,5 +1,6 @@
 {
   "page_type": "product",
+  "url": "https://shop.example.com/product/classic-tee",
   "title": "Hand-thrown ceramic mug",
   "min_quality": 0.12,
   "must_not_contain": [

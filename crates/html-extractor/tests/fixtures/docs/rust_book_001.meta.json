@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://doc.rust-lang.org/reference/items.html",
   "title": "Iterators",
   "min_quality": 0.1,
   "must_not_contain": [

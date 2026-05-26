@@ -1,5 +1,6 @@
 {
   "page_type": "listing",
+  "url": "https://example.com/browse/docs",
   "title": "All API endpoints",
   "min_quality": 0.0,
   "must_not_contain": [

@@ -1,5 +1,6 @@
 {
   "page_type": "listing",
+  "url": "https://example.com/category/updates",
   "title": "All posts",
   "min_quality": 0.0,
   "must_not_contain": [
