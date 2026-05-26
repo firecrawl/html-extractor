@@ -34,6 +34,13 @@ export interface ExtractOptions {
   includeMetadata?: boolean
   /** If the kept subtree's text is shorter than this many characters, fall back. Default 25. */
   minExtractionLength?: number
+  /**
+   * Reject inputs larger than this many bytes. When exceeded, returns an empty
+   * ExtractResult with `errorReason = "input_too_large: ..."` instead of throwing.
+   * Default: no limit. Recommended for production: cap at the 99.9th-percentile
+   * page size on your traffic to bound per-call memory.
+   */
+  maxInputSize?: number
 }
 
 export interface Metadata {

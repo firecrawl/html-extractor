@@ -70,6 +70,32 @@ test('version() returns a semver-shaped string', () => {
   assert.match(v, /^\d+\.\d+\.\d+/)
 })
 
+test('maxInputSize rejects oversized input (async) without throwing', async () => {
+  // SIMPLE is well under any sensible limit; force the limit below it.
+  const limit = 64
+  const r = await extract(SIMPLE, { maxInputSize: limit })
+  assert.equal(r.markdown, '')
+  assert.equal(r.extractionQuality, 0)
+  assert.ok(r.errorReason, 'errorReason should be set')
+  assert.match(r.errorReason, /input_too_large/)
+  assert.ok(r.errorReason.includes(String(limit)))
+})
+
+test('maxInputSize rejects oversized input (sync) without throwing', () => {
+  const limit = 64
+  const r = extractSync(SIMPLE, { maxInputSize: limit })
+  assert.equal(r.markdown, '')
+  assert.equal(r.extractionQuality, 0)
+  assert.match(r.errorReason, /input_too_large/)
+})
+
+test('maxInputSize is permissive when input is under the limit', async () => {
+  // Pick a limit comfortably above SIMPLE's size.
+  const r = await extract(SIMPLE, { maxInputSize: 1_000_000 })
+  assert.ok(r.markdown.includes('Hello World'))
+  assert.ok(!r.errorReason, `unexpected errorReason: ${r.errorReason}`)
+})
+
 test('async extract releases the event loop (concurrent calls work)', async () => {
   const N = 8
   const promises = []
