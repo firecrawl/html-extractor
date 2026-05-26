@@ -1,5 +1,6 @@
 {
   "page_type": "service",
+  "url": "https://example.com/terms",
   "title": "Terms of service",
   "min_quality": 0.1,
   "must_not_contain": [

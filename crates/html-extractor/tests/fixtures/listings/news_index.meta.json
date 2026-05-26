@@ -1,5 +1,6 @@
 {
   "page_type": "listing",
+  "url": "https://example.com/category/world",
   "title": "Latest news",
   "min_quality": 0.0,
   "must_not_contain": [

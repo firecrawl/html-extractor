@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://docs.python.org/3/tutorial/index.html",
   "title": "Decorators",
   "min_quality": 0.1,
   "must_not_contain": [

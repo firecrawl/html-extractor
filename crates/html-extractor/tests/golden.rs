@@ -22,6 +22,12 @@ use std::path::{Path, PathBuf};
 struct GoldenMeta {
     #[serde(default)]
     page_type: Option<String>,
+    /// Source URL of the page. Passed to the classifier just like production
+    /// does — URL is the primary signal for product / docs / listing / service
+    /// page types. Article / forum / collection classify structurally and may
+    /// omit it.
+    #[serde(default)]
+    url: Option<String>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -90,12 +96,13 @@ fn golden_corpus() {
                 .expect("parse meta");
         let expected = fs::read_to_string(&expected_path).unwrap_or_default();
 
-        let mut opts = ExtractOptions::default();
-        if let Some(pt) = meta.page_type.as_deref() {
-            // Article URLs come from the test name when needed; we don't set
-            // the override here to also exercise the classifier.
-            let _ = pt;
-        }
+        // Pass the source URL when the fixture carries one, exactly as the
+        // production caller does. We never set page_type_override — the point
+        // is to exercise the real classifier. include_metadata defaults to true.
+        let opts = ExtractOptions {
+            url: meta.url.clone(),
+            ..Default::default()
+        };
         let r = match extract(&html, &opts) {
             Ok(r) => r,
             Err(e) => {
@@ -103,7 +110,6 @@ fn golden_corpus() {
                 continue;
             }
         };
-        opts.include_metadata = true;
 
         let fixture = path
             .strip_prefix(FIXTURE_DIR)
@@ -134,10 +140,13 @@ fn golden_corpus() {
             ));
         }
         if let Some(pt) = meta.page_type.as_deref() {
-            // We don't strictly assert classifier output on every fixture; the
-            // unit tests in classifier.rs cover specific URLs.  Here we just
-            // check that the result is sensible.
-            let _expected_pt = parse_page_type(pt);
+            let expected_pt = parse_page_type(pt);
+            if r.page_type != expected_pt {
+                failures.push(format!(
+                    "{fixture}: page_type mismatch — expected {expected_pt:?}, got {:?}",
+                    r.page_type
+                ));
+            }
         }
         if let Some(meta_title) = meta.title.as_deref() {
             if let Some(actual) = r.metadata.as_ref().and_then(|m| m.title.clone()) {

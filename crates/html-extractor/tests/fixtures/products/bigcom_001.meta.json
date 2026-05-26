@@ -1,5 +1,6 @@
 {
   "page_type": "product",
+  "url": "https://store.example.com/product/wireless-mouse",
   "title": "Brass desk lamp",
   "min_quality": 0.12,
   "must_not_contain": [
