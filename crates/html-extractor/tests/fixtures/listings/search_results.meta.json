@@ -1,5 +1,6 @@
 {
   "page_type": "listing",
+  "url": "https://shop.example.com/search?q=desk+lamp",
   "title": "Search results for: desk lamp",
   "min_quality": 0.0,
   "must_not_contain": [

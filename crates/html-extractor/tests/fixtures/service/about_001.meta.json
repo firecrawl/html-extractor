@@ -1,5 +1,6 @@
 {
   "page_type": "service",
+  "url": "https://example.com/about",
   "title": "About Example",
   "min_quality": 0.1,
   "must_not_contain": [

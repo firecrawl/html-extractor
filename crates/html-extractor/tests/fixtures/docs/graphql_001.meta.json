@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://graphql.org/docs/getting-started/",
   "title": "Schema definition",
   "min_quality": 0.1,
   "must_not_contain": [

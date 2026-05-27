@@ -1,5 +1,6 @@
 {
   "page_type": "documentation",
+  "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
   "title": "Array.prototype.map()",
   "min_quality": 0.1,
   "must_not_contain": [
