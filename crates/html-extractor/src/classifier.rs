@@ -132,19 +132,19 @@ pub(crate) fn classify(tree: &Tree, url: Option<&str>, metadata: &Metadata) -> (
         // Class signals — counted here, scored below with harmonic scaling.
         let needle = elem.class_id_lower();
         if !needle.is_empty() {
-            if CLASS_FORUM.is_match(&needle) {
+            if CLASS_FORUM.is_match(needle) {
                 class_counts[PageType::Forum as usize] += 1;
             }
-            if CLASS_PRODUCT.is_match(&needle) {
+            if CLASS_PRODUCT.is_match(needle) {
                 class_counts[PageType::Product as usize] += 1;
             }
-            if CLASS_LISTING.is_match(&needle) {
+            if CLASS_LISTING.is_match(needle) {
                 class_counts[PageType::Listing as usize] += 1;
             }
-            if CLASS_DOCS.is_match(&needle) {
+            if CLASS_DOCS.is_match(needle) {
                 class_counts[PageType::Documentation as usize] += 1;
             }
-            if CLASS_COLLECTION.is_match(&needle) {
+            if CLASS_COLLECTION.is_match(needle) {
                 class_counts[PageType::Collection as usize] += 1;
             }
         }

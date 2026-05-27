@@ -16,6 +16,11 @@ pub(crate) struct Element {
     /// Direct text content owned by this element (concatenated from any
     /// adjacent text-node children). Useful for leaf-level scoring.
     pub own_text: String,
+    /// The `class` and `id` attribute values joined and lowercased, cached at
+    /// parse time (empty when the element has neither). Recomputing this per
+    /// walk was a measurable allocation hotspot — the classifier, scoring, and
+    /// clean passes each call it for every node — so it's materialized once.
+    pub class_id: String,
     /// Indices of child elements in `Tree.nodes`.
     pub children: Vec<usize>,
     /// Index of parent (`usize::MAX` for the root).
@@ -23,11 +28,17 @@ pub(crate) struct Element {
 }
 
 impl Element {
-    /// Return the `class` attribute joined with the `id` attribute, lowercased
-    /// for regex matching.
-    pub fn class_id_lower(&self) -> String {
+    /// The cached lowercased `class`+`id` string (see [`Element::class_id`]),
+    /// matched against chrome / content / page-type hint regexes.
+    pub fn class_id_lower(&self) -> &str {
+        &self.class_id
+    }
+
+    /// Compute the lowercased `class`+`id` join from an attribute list. The
+    /// parser uses this to populate [`Element::class_id`] exactly once.
+    pub fn compute_class_id(attrs: &[(String, String)]) -> String {
         let mut out = String::new();
-        for (k, v) in &self.attrs {
+        for (k, v) in attrs {
             if k == "class" || k == "id" {
                 if !out.is_empty() {
                     out.push(' ');

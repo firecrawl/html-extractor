@@ -225,7 +225,7 @@ pub(crate) fn select_main(
         };
         let tag_weight_term = (profile.tag_weight)(elem.tag.as_str());
         let class_id_lc = elem.class_id_lower();
-        let class_hint_term = class_hint_score(&class_id_lc);
+        let class_hint_term = class_hint_score(class_id_lc);
 
         // Position term: 0 at the edges, ~1 in the middle 60% of the document.
         let position_term = position_score(tree, root, idx, body_depth);
@@ -248,7 +248,7 @@ pub(crate) fn select_main(
         while let Some((idx, inherited)) = stack.pop() {
             own_scores[idx].parent_chain_term = inherited;
             let own = (profile.tag_weight)(tree.get(idx).tag.as_str())
-                + class_hint_score(&tree.get(idx).class_id_lower());
+                + class_hint_score(tree.get(idx).class_id_lower());
             // Inherited bonus decays as we descend.
             let next = (inherited * 0.7) + (own * 0.3);
             for &c in &tree.get(idx).children {
@@ -362,7 +362,7 @@ fn fast_path(tree: &Tree, body: usize, options: &ExtractOptions) -> Option<usize
             return false;
         }
         let needle = elem.class_id_lower();
-        if !needle.is_empty() && CONTENT_HINT_RE.is_match(&needle) {
+        if !needle.is_empty() && CONTENT_HINT_RE.is_match(needle) {
             let text = tree.text_len_excluding_links(idx);
             if text >= options.min_extraction_length.max(120) {
                 candidate = Some(idx);

@@ -56,11 +56,13 @@ fn walk(node: &Handle, parent: usize, tree: &mut Tree) {
                 for a in attrs.borrow().iter() {
                     attrs_vec.push((a.name.local.to_string().to_lowercase(), a.value.to_string()));
                 }
+                let class_id = Element::compute_class_id(&attrs_vec);
                 let idx = tree.nodes.len();
                 tree.nodes.push(Element {
                     tag,
                     attrs: attrs_vec,
                     own_text: String::new(),
+                    class_id,
                     children: Vec::new(),
                     parent,
                 });

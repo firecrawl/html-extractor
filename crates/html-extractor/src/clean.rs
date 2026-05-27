@@ -168,8 +168,8 @@ fn post_clean_inner(
             idx != root && idx_text > 0 && stripped_total + idx_text > strip_budget;
 
         let needle = elem.class_id_lower();
-        let chrome_hit = !needle.is_empty() && is_chrome(&needle);
-        let share_hit = !needle.is_empty() && is_share_or_ad(&needle);
+        let chrome_hit = !needle.is_empty() && is_chrome(needle);
+        let share_hit = !needle.is_empty() && is_share_or_ad(needle);
         let link_hit = apply_link_density
             && !options.favor_recall
             && matches!(elem.tag.as_str(), "div" | "ul" | "ol" | "p" | "section")
