@@ -16,6 +16,7 @@ repository = "https://github.com/firecrawl/html-extractor"
 html-extractor = { path = "crates/html-extractor", version = "0.1.0" }
 
 # Shared third-party deps
+compact_str = "0.9"
 html5ever = "0.27"
 markup5ever_rcdom = "0.3"
 markup5ever = "0.12"

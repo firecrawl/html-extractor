@@ -97,7 +97,7 @@ pub(crate) fn pre_clean(tree: &mut Tree, options: &ExtractOptions) {
     // formatting wrappers.
     for idx in to_strip {
         if tree.get(idx).tag != "_dropped_" {
-            tree.get_mut(idx).tag = "span".to_string();
+            tree.get_mut(idx).tag = "span".into();
         }
     }
 }

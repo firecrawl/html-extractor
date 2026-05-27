@@ -4,13 +4,17 @@
 //! the rcdom once and copy the relevant nodes into a flat `Vec<Node>` that's
 //! cheap to iterate.
 
+use compact_str::CompactString;
+
 /// Element-only payload (text and other text-like nodes are inlined as
 /// children of their owning element to keep the iteration uniform).
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Element {
     /// Lower-case tag name (`"div"`, `"p"`, …). The root node uses
-    /// `"#document"`.
-    pub tag: String,
+    /// `"#document"`. `CompactString` keeps every tag name inline (all HTML
+    /// tags are ≤24 bytes), so there's no per-node heap allocation — including
+    /// the `_dropped_` / `span` rewrites done during cleaning.
+    pub tag: CompactString,
     /// All attributes on the element. Names are lowercased.
     pub attrs: Vec<(String, String)>,
     /// Direct text content owned by this element (concatenated from any
@@ -134,7 +138,7 @@ impl Tree {
     pub fn drop_subtree(&mut self, idx: usize) {
         let mut stack = vec![idx];
         while let Some(i) = stack.pop() {
-            self.nodes[i].tag = "_dropped_".to_string();
+            self.nodes[i].tag = "_dropped_".into();
             self.nodes[i].own_text.clear();
             for &c in &self.nodes[i].children.clone() {
                 stack.push(c);

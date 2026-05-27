@@ -9,6 +9,7 @@ description = "Fast HTML main-content extractor: scored tree walk inspired by tr
 readme = "../../README.md"
 
 [dependencies]
+compact_str = { workspace = true }
 html5ever = { workspace = true }
 markup5ever = { workspace = true }
 markup5ever_rcdom = { workspace = true }

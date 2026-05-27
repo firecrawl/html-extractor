@@ -1,6 +1,7 @@
 //! HTML parser: drives html5ever + markup5ever_rcdom into our internal
 //! [`crate::tree::Tree`].
 
+use compact_str::CompactString;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
@@ -17,7 +18,7 @@ pub(crate) fn parse(html: &str) -> Result<Tree, ExtractError> {
     let mut tree = Tree::default();
     // Reserve a synthetic document root.
     tree.nodes.push(Element {
-        tag: "#document".to_string(),
+        tag: "#document".into(),
         parent: usize::MAX,
         ..Element::default()
     });
@@ -51,7 +52,7 @@ fn walk(node: &Handle, parent: usize, tree: &mut Tree) {
     for child in children.iter() {
         match &child.data {
             NodeData::Element { name, attrs, .. } => {
-                let tag = name.local.to_string().to_lowercase();
+                let tag = CompactString::from(name.local.as_ref().to_lowercase());
                 let mut attrs_vec = Vec::with_capacity(attrs.borrow().len());
                 for a in attrs.borrow().iter() {
                     attrs_vec.push((a.name.local.to_string().to_lowercase(), a.value.to_string()));
