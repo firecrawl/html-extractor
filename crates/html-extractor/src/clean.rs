@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::tree::Tree;
-use crate::types::ExtractOptions;
+use crate::types::{Decision, ExtractOptions};
 
 /// Tags whose entire subtree is never content.
 const KILL_TAGS: &[&str] = &[
@@ -131,6 +131,8 @@ fn post_clean_inner(
     // descendant indices that the renderer will respect. This keeps `tree`
     // shareable with other passes (e.g. for fallback retries).
     let mut skip: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    // Only allocated when the caller asked for the decisions ledger.
+    let mut decisions: Vec<Decision> = Vec::new();
     // Subtree text/link-char metrics for the whole selection, computed in one
     // post-order pass. Looking these up is O(1); the previous code called
     // `full_text` per node, which re-walked each subtree (O(N²)).
@@ -182,6 +184,30 @@ fn post_clean_inner(
         {
             skip.insert(idx);
             stripped_total += idx_text;
+            if options.output_decisions {
+                let link_density = if idx_text > 0 {
+                    (metrics.link_chars[idx] as f32 / idx_text as f32).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                decisions.push(Decision {
+                    selector: elem.selector(),
+                    // Share of the kept subtree's text this dropped block held.
+                    score: if root_text_len > 0 {
+                        idx_text as f32 / root_text_len as f32
+                    } else {
+                        0.0
+                    },
+                    kept: false,
+                    // An explicit chrome/share class match is a strong signal;
+                    // a link-density-only drop is only as sure as the ratio.
+                    confidence: if chrome_hit || share_hit {
+                        0.9
+                    } else {
+                        link_density
+                    },
+                });
+            }
             // don't descend into a dropped subtree
             continue;
         }
@@ -189,13 +215,19 @@ fn post_clean_inner(
             stack.push(c);
         }
     }
-    CleanedRoot { root, skip }
+    CleanedRoot {
+        root,
+        skip,
+        decisions,
+    }
 }
 
-/// Result of post-clean: a root index plus a set of subtrees to skip.
+/// Result of post-clean: a root index, the set of subtrees to skip, and (when
+/// `output_decisions` is set) the per-drop decisions recorded along the way.
 pub(crate) struct CleanedRoot {
     pub root: usize,
     pub skip: std::collections::HashSet<usize>,
+    pub decisions: Vec<Decision>,
 }
 
 static CHROME_RE: Lazy<Regex> = Lazy::new(|| {

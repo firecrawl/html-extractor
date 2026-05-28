@@ -16,7 +16,9 @@ mod scoring;
 mod tree;
 mod types;
 
-pub use types::{ExtractError, ExtractOptions, ExtractResult, ExtractStats, Metadata, PageType};
+pub use types::{
+    Decision, ExtractError, ExtractOptions, ExtractResult, ExtractStats, Metadata, PageType,
+};
 
 /// Extract the main content of an HTML document, returning a structured
 /// [`ExtractResult`] containing markdown, page-type, metadata, and a confidence
@@ -150,15 +152,30 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
     };
 
     // Stage 5: post-clean within the kept subtree, then render.
-    let (markdown, text_chars) = if let Some(root) = final_root {
+    let (markdown, text_chars, decisions) = if let Some(root) = final_root {
         let cleaned = if matches!(page_type, PageType::Listing | PageType::Collection) {
             clean::post_clean_lenient_links(&tree, root, options)
         } else {
             clean::post_clean(&tree, root, options)
         };
-        render::render(&tree, &cleaned, options)
+        let (markdown, text_chars) = render::render(&tree, &cleaned, options);
+        // Ledger: the kept main container followed by each dropped block.
+        let decisions = if options.output_decisions {
+            let mut v = Vec::with_capacity(cleaned.decisions.len() + 1);
+            v.push(Decision {
+                selector: tree.get(root).selector(),
+                score: 1.0,
+                kept: true,
+                confidence: quality,
+            });
+            v.extend(cleaned.decisions);
+            Some(v)
+        } else {
+            None
+        };
+        (markdown, text_chars, decisions)
     } else {
-        (String::new(), 0)
+        (String::new(), 0, None)
     };
 
     let stats = ExtractStats {
@@ -180,7 +197,7 @@ pub fn extract(html: &str, options: &ExtractOptions) -> Result<ExtractResult, Ex
         } else {
             None
         },
-        decisions: None,
+        decisions,
         stats: Some(stats),
         error_reason: None,
     })

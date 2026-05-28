@@ -87,6 +87,40 @@ fn page_type_override_is_respected() {
 }
 
 #[test]
+fn decisions_ledger_off_by_default() {
+    let r = extract(SIMPLE_ARTICLE, &ExtractOptions::default()).unwrap();
+    assert!(r.decisions.is_none(), "ledger must be opt-in");
+}
+
+#[test]
+fn decisions_ledger_records_kept_root_and_dropped_chrome() {
+    let opts = ExtractOptions {
+        output_decisions: true,
+        ..Default::default()
+    };
+    let r = extract(SIMPLE_ARTICLE, &opts).unwrap();
+    let decisions = r.decisions.expect("ledger present when opted in");
+
+    // First entry is the kept main container.
+    let root = &decisions[0];
+    assert!(root.kept, "first decision should be the kept root");
+    assert!(!root.selector.is_empty());
+
+    // The related-stories sidebar and footer are dropped — at least one
+    // kept=false entry, each carrying a non-empty selector.
+    let drops: Vec<_> = decisions.iter().filter(|d| !d.kept).collect();
+    assert!(
+        !drops.is_empty(),
+        "expected at least one dropped boilerplate block, got {decisions:?}"
+    );
+    for d in &drops {
+        assert!(!d.selector.is_empty(), "drop selector should be non-empty");
+        assert!((0.0..=1.0).contains(&d.confidence));
+        assert!((0.0..=1.0).contains(&d.score));
+    }
+}
+
+#[test]
 fn no_panic_on_malformed_input() {
     // unclosed tags, weird structure
     let html = "<html><body><div><p>hello world this is some text that is long enough to maybe make it past extraction <span>nested<div>still here";

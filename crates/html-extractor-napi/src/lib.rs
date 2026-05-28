@@ -53,6 +53,14 @@ pub struct ExtractStats {
 }
 
 #[napi(object)]
+pub struct Decision {
+    pub selector: String,
+    pub score: f64,
+    pub kept: bool,
+    pub confidence: f64,
+}
+
+#[napi(object)]
 pub struct ExtractResult {
     pub markdown: String,
     pub text: Option<String>,
@@ -61,6 +69,7 @@ pub struct ExtractResult {
     pub language: Option<String>,
     pub metadata: Option<Metadata>,
     pub stats: Option<ExtractStats>,
+    pub decisions: Option<Vec<Decision>>,
     pub error_reason: Option<String>,
 }
 
@@ -141,6 +150,16 @@ fn map_result(r: html_extractor::ExtractResult, want_text: bool) -> ExtractResul
         used_fallback: s.used_fallback,
         page_type: s.page_type.to_string(),
     });
+    let decisions = r.decisions.map(|ds| {
+        ds.into_iter()
+            .map(|d| Decision {
+                selector: d.selector,
+                score: d.score as f64,
+                kept: d.kept,
+                confidence: d.confidence as f64,
+            })
+            .collect()
+    });
     ExtractResult {
         markdown: r.markdown,
         text,
@@ -149,6 +168,7 @@ fn map_result(r: html_extractor::ExtractResult, want_text: bool) -> ExtractResul
         language: r.language,
         metadata,
         stats,
+        decisions,
         error_reason: r.error_reason.map(|e| e.to_string()),
     }
 }
@@ -229,6 +249,7 @@ fn too_large_result(html_len: usize, limit: usize) -> ExtractResult {
         language: None,
         metadata: None,
         stats: None,
+        decisions: None,
         error_reason: Some(format!(
             "input_too_large: {html_len} bytes exceeds max_input_size {limit}"
         )),
