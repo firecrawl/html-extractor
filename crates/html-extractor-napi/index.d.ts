@@ -10,7 +10,10 @@ export interface ExtractOptions {
   favorRecall?: boolean
   /** Include a plain-text mirror of the markdown in the result. */
   outputText?: boolean
-  /** Reserved for Phase 4 (per-element decisions ledger). */
+  /**
+   * Populate `result.decisions`: the kept main container plus every
+   * boilerplate block dropped during post-clean. Off by default.
+   */
   outputDecisions?: boolean
   /** Hint for language detection. */
   targetLanguage?: string
@@ -62,6 +65,17 @@ export interface ExtractStats {
   pageType: string
 }
 
+export interface Decision {
+  /** CSS-selector-shaped signature: tag + sorted classes + `#id`. */
+  selector: string
+  /** Fraction of the kept subtree's text this element held, `[0,1]`. */
+  score: number
+  /** Whether the element survived into the output. */
+  kept: boolean
+  /** Confidence in the keep/drop call, `[0,1]`. */
+  confidence: number
+}
+
 export interface ExtractResult {
   /** Cleaned main content as GitHub-flavored markdown. */
   markdown: string
@@ -77,6 +91,8 @@ export interface ExtractResult {
   metadata?: Metadata
   /** Internal stats useful for telemetry. */
   stats?: ExtractStats
+  /** Keep/drop ledger when `outputDecisions: true`: kept root then dropped blocks. */
+  decisions?: Decision[]
   /** Reason for a low-confidence / failed extraction, if any. */
   errorReason?: string
 }

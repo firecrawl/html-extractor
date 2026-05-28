@@ -65,6 +65,30 @@ test('conflicting options reject the promise', async () => {
   )
 })
 
+test('outputDecisions returns a keep/drop ledger', async () => {
+  const withChrome = `
+    <html><body>
+      <main><article>
+        <h1>Hello World</h1>
+        <p>This is the first paragraph of an article, long enough to clear the extraction threshold with real prose preserved in the output.</p>
+        <p>A second paragraph gives the scored walk a solid main-content region to lock onto for this page.</p>
+        <aside class="related-stories"><a href="/a">Other story one</a><a href="/b">Other story two</a></aside>
+      </article></main>
+      <footer class="site-footer">© 2024 ExampleSite</footer>
+    </body></html>`
+  const r = await extract(withChrome, { outputDecisions: true })
+  assert.ok(Array.isArray(r.decisions), 'decisions should be an array')
+  assert.ok(r.decisions.length >= 1)
+  assert.equal(r.decisions[0].kept, true, 'first entry is the kept root')
+  for (const d of r.decisions) {
+    assert.equal(typeof d.selector, 'string')
+    assert.ok(d.confidence >= 0 && d.confidence <= 1)
+  }
+  // default: no ledger
+  const plain = await extract(withChrome)
+  assert.ok(!plain.decisions, 'decisions omitted unless opted in')
+})
+
 test('version() returns a semver-shaped string', () => {
   const v = version()
   assert.match(v, /^\d+\.\d+\.\d+/)

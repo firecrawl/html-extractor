@@ -63,8 +63,9 @@ pub struct ExtractOptions {
     pub favor_recall: bool,
     /// Include the plain-text version in the result.
     pub output_text: bool,
-    /// Include the per-element decisions ledger (currently always `None`; see
-    /// `DECISIONS.md` D10).
+    /// Populate the per-element [`ExtractResult::decisions`] ledger: the
+    /// kept main container plus every boilerplate block post-clean dropped
+    /// inside it. Off by default — building it costs an allocation per drop.
     pub output_decisions: bool,
     /// Hint for language detection.
     pub target_language: Option<String>,
@@ -116,7 +117,9 @@ pub struct ExtractResult {
     pub language: Option<String>,
     /// Metadata pulled from JSON-LD, OpenGraph, etc.
     pub metadata: Option<Metadata>,
-    /// Per-element ledger (Phase 4; presently always `None`).
+    /// Per-element keep/drop ledger. `None` unless
+    /// [`ExtractOptions::output_decisions`] was set; otherwise the kept main
+    /// container followed by each boilerplate block post-clean dropped.
     pub decisions: Option<Vec<Decision>>,
     /// Stats describing what happened internally.
     pub stats: Option<ExtractStats>,
@@ -166,16 +169,22 @@ pub struct Metadata {
     pub schema_type: Option<String>,
 }
 
-/// Per-element decision (Phase 4 stub).
+/// A single keep/drop decision recorded during extraction, for telemetry and
+/// for the offline rule-learner to mine boilerplate-container signatures.
 #[derive(Debug, Clone)]
 pub struct Decision {
-    /// Selector identifying the element.
+    /// CSS-selector-shaped signature: `tag` + sorted `.class`es + `#id`
+    /// (e.g. `div.related.sidebar#aside`). Stable enough to aggregate across
+    /// pages of the same template.
     pub selector: String,
-    /// Raw score.
+    /// Fraction of the kept subtree's text contained in this element, `[0, 1]`.
+    /// Near-zero for a small dropped widget; ~1.0 for the kept root.
     pub score: f32,
-    /// `true` if the element was kept in the output.
+    /// Whether the element survived into the output. `true` for the main
+    /// container, `false` for each dropped boilerplate block.
     pub kept: bool,
-    /// Confidence in `[0.0, 1.0]`.
+    /// Confidence in the keep/drop call, `[0, 1]`. High for explicit
+    /// chrome/share class matches; the link density for link-dense drops.
     pub confidence: f32,
 }
 

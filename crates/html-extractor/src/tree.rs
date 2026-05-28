@@ -53,6 +53,28 @@ impl Element {
         out.to_lowercase()
     }
 
+    /// CSS-selector-shaped signature for this element: `tag` + sorted
+    /// `.class`es + `#id` (e.g. `div.related.sidebar#aside`). Used by the
+    /// decisions ledger; deterministic so it aggregates across pages.
+    pub fn selector(&self) -> String {
+        let mut s = self.tag.to_string();
+        if let Some(class) = self.attr("class") {
+            let mut classes: Vec<&str> = class.split_whitespace().collect();
+            classes.sort_unstable();
+            for c in classes {
+                s.push('.');
+                s.push_str(c);
+            }
+        }
+        if let Some(id) = self.attr("id") {
+            if !id.trim().is_empty() {
+                s.push('#');
+                s.push_str(id.trim());
+            }
+        }
+        s
+    }
+
     pub fn attr(&self, name: &str) -> Option<&str> {
         self.attrs
             .iter()
